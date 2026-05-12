@@ -263,17 +263,17 @@
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-slate-700">รายละเอียด <span class="text-slate-400 font-normal">(ระบุหรือไม่ระบุก็ได้)</span></label>
-            <input type="text" id="txDesc" placeholder="เช่น เงินเดือน, ค่าอาหาร" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+            <label class="block text-sm font-semibold text-slate-700">รายละเอียดรายการ <span class="text-slate-400 font-normal text-xs">(ระบุเพื่อช่วยในการจำ)</span></label>
+            <input type="text" id="txDesc" placeholder="เช่น ค่าอาหารกลางวัน, โอนเงินให้แม่" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
           </div>
 
-          <button type="submit" id="btn-tx" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-bold shadow-lg shadow-indigo-100">บันทึกข้อมูล</button>
+          <button type="submit" id="btn-tx" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-bold shadow-lg shadow-indigo-100">ยืนยันการบันทึกข้อมูล</button>
         </form>
       </div>
 
       <div id="page-receipt"
         class="hidden-page max-w-3xl mx-auto bg-white rounded-2xl shadow-sm p-8 border border-slate-100 animate-in slide-in-from-bottom-4 duration-500">
-        <h2 class="text-2xl font-bold mb-8 text-slate-800 border-b pb-4">บันทึกใบเสร็จ</h2>
+        <h2 class="text-2xl font-bold mb-8 text-slate-800 border-b pb-4">บันทึกใบเสร็จแบบละเอียด</h2>
         <form id="receipt-form" class="space-y-6" onsubmit="submitReceipt(event)">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -282,20 +282,22 @@
             </div>
             <div>
               <label class="block text-sm font-semibold text-slate-700">ชื่อร้านค้า / ผู้รับเงิน</label>
-              <input type="text" id="rcShop" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ชื่อร้าน" required>
+              <input type="text" id="rcShop" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="เช่น 7-Eleven, ห้างสรรพสินค้า" required>
             </div>
           </div>
 
           <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
             <div class="flex justify-between items-center mb-4">
               <h3 class="font-bold text-slate-700">รายการสินค้า / บริการ</h3>
-              <button type="button" onclick="addReceiptItem()" class="text-sm bg-white border border-slate-200 hover:bg-slate-100 text-indigo-600 font-bold py-1.5 px-4 rounded-lg transition shadow-sm">+ เพิ่มแถว</button>
+              <button type="button" onclick="addReceiptItem()" class="text-xs bg-white border border-slate-200 hover:bg-slate-100 text-indigo-600 font-bold py-2 px-4 rounded-lg transition shadow-sm">
+                + เพิ่มแถวสินค้า
+              </button>
             </div>
             <div id="receipt-items-container" class="space-y-3">
               <div
                 class="flex flex-wrap md:flex-nowrap gap-2 items-center receipt-item bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
-                <input type="text" class="item-name flex-1 min-w-[150px] px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="รายการ" required>
-                <input type="number" class="item-price w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ราคา" required>
+                <input type="text" class="item-name flex-1 min-w-[150px] px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ชื่อสินค้า/บริการ" required>
+                <input type="number" class="item-price w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ราคา/หน่วย" required>
                 <input type="number" class="item-qty w-20 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value="1" required>
                 <button type="button" onclick="this.parentElement.remove()" class="text-rose-400 hover:text-rose-600 p-2 transition">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -304,7 +306,7 @@
             </div>
           </div>
 
-          <button type="submit" id="btn-rc" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-bold shadow-lg shadow-indigo-100">บันทึกใบเสร็จ</button>
+          <button type="submit" id="btn-rc" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-bold shadow-lg shadow-indigo-100">บันทึกใบเสร็จเข้าสู่ระบบ</button>
         </form>
       </div>
       
