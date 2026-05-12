@@ -283,6 +283,8 @@
 
         // อัปเดตยอดเงินรวม
         document.getElementById('display-balance').innerText = data.balance.toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('display-income').innerText = data.income[0].toLocaleString(undefined, { minimumFractionDigits: 2 });
+        document.getElementById('display-expense').innerText = data.expense[0].toLocaleString(undefined, { minimumFractionDigits: 2 });
 
         // อัปเดตกราฟ
         renderChart(data);
