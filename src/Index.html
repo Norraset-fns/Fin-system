@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <title>ระบบบันทึกรายรับรายจ่าย และ ใบเสร็จ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <?!= include('style'); ?>
+
+</head>
+
+<body class="text-slate-800 bg-slate-50 flex h-screen overflow-hidden">
+
+  <div id="loading-modal"
+    class="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm hidden-page opacity-0 transition-opacity duration-300">
+    <div id="loading-card"
+      class="bg-white rounded-[2rem] pt-12 pb-8 px-10 w-[320px] flex flex-col items-center shadow-2xl transform scale-95 transition-transform duration-300">
+
+      <div class="relative w-28 h-28 mb-8 flex items-center justify-center">
+        <div id="modal-icon-loading" class="absolute inset-0 flex items-center justify-center">
+          <svg class="absolute inset-0 w-full h-full animate-[spin_2s_linear_infinite]" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="44" fill="none" stroke="#4f46e5" stroke-width="3" stroke-dasharray="200"
+              stroke-dashoffset="80" stroke-linecap="round"></circle>
+          </svg>
+          <svg class="absolute inset-1 w-26 h-26 animate-[spin_1.5s_linear_infinite_reverse]" viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="36" fill="none" stroke="#818cf8" stroke-width="2.5" stroke-dasharray="140"
+              stroke-dashoffset="100" stroke-linecap="round"></circle>
+          </svg>
+          <div
+            class="absolute w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center shadow-inner ring-4 ring-indigo-50">
+            <svg class="w-6 h-6 text-white ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"></path>
+              <path d="M14 2v4a2 2 0 0 0 2 2h4"></path>
+              <path d="M3 15h6"></path>
+              <path d="M3 18h6"></path>
+            </svg>
+          </div>
+        </div>
+
+        <div id="modal-icon-success" class="absolute inset-0 flex items-center justify-center hidden">
+          <div
+            class="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg ring-8 ring-emerald-50 animate-in zoom-in duration-300">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+        </div>
+
+        <div id="modal-icon-error" class="absolute inset-0 flex items-center justify-center hidden">
+          <div
+            class="w-20 h-20 bg-rose-500 rounded-full flex items-center justify-center shadow-lg ring-8 ring-rose-50 animate-in zoom-in duration-300">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </div>
+        </div>
+
+      </div>
+
+      <h3 id="loading-title" class="text-slate-800 text-xl font-bold mb-1 transition-colors">กำลังดำเนินการ</h3>
+      <p id="loading-subtitle" class="text-slate-500 text-sm mb-8 font-medium">โปรดรอสักครู่...</p>
+
+      <div id="modal-loading-bar"
+        class="w-4/5 h-[3px] bg-slate-100 rounded-full overflow-hidden relative transition-opacity">
+        <div class="h-full bg-indigo-600 rounded-full animate-loading-bar absolute"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sidebar-overlay" onclick="closeSidebar()"
+    class="fixed inset-0 bg-slate-900 bg-opacity-50 z-20 hidden-page md:hidden transition-opacity"></div>
+
+  <aside id="sidebar"
+    class="hidden-page w-64 bg-indigo-900 text-white flex flex-col fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition duration-300 ease-in-out z-30 shadow-2xl">
+    <div class="h-16 flex items-center px-6 bg-indigo-950 border-b border-indigo-800">
+      <svg class="w-8 h-8 text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z">
+        </path>
+      </svg>
+      <span class="font-bold text-xl tracking-tight">FinSystem</span>
+    </div>
+
+    <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+      <button onclick="navigate('dashboard')" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium hover:bg-indigo-800 hover:text-white transition group" data-role="admin manager">
+        <svg class="w-5 h-5 mr-3 text-indigo-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+        แดชบอร์ด
+      </button>
+      <button onclick="navigate('transaction')" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium hover:bg-indigo-800 hover:text-white transition group" data-role="admin user">
+        <svg class="w-5 h-5 mr-3 text-indigo-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+        บันทึกรายรับ-จ่าย
+      </button>
+      <button onclick="navigate('receipt')" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium hover:bg-indigo-800 hover:text-white transition group" data-role="admin user">
+        <svg class="w-5 h-5 mr-3 text-indigo-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+        บันทึกใบเสร็จ
+      </button>
+      <!-- ปุ่มจัดการผู้ใช้ (เห็นเฉพาะ Admin) -->
+      <button onclick="navigate('users')" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium hover:bg-indigo-800 hover:text-white transition group" data-role="admin">
+        <svg class="w-5 h-5 mr-3 text-indigo-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+        จัดการผู้ใช้งาน
+      </button>
+    </nav>
+
+    <div class="p-6 bg-indigo-950 border-t border-indigo-800">
+      <div class="flex items-center mb-4">
+        <div class="bg-indigo-700 p-2 rounded-full mr-3">
+          <svg class="w-5 h-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+          </svg>
+        </div>
+        <div>
+          <p id="user-name" class="text-sm font-semibold leading-tight"></p>
+          <p id="user-role" class="text-xs text-indigo-400 uppercase tracking-wider"></p>
+        </div>
+      </div>
+      <button onclick="logout()" class="w-full bg-rose-500 hover:bg-rose-600 py-2 rounded-lg text-sm font-semibold shadow-sm transition flex justify-center items-center">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+        ออกจากระบบ
+      </button>
+    </div>
+  </aside>
+
+  <div class="flex-1 flex flex-col h-screen w-full overflow-hidden relative">
+
+    <header id="mobile-header"
+      class="hidden-page md:hidden bg-white border-b border-slate-200 p-4 flex justify-between items-center shadow-sm z-10">
+      <span class="font-bold text-lg text-indigo-900">FinSystem</span>
+      <button onclick="openSidebar()" class="text-slate-600 hover:text-indigo-600 focus:outline-none">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
+    </header>
+
+    <main class="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-8">
+
+      <div id="page-login" class="max-w-md mx-auto bg-white rounded-2xl shadow-xl p-10 mt-12 border border-slate-100">
+        <div class="text-center mb-8">
+          <h2 class="text-3xl font-extrabold text-slate-900">เข้าสู่ระบบ</h2>
+          <p class="text-slate-500 mt-2">จัดการระบบรายรับ-รายจ่าย</p>
+        </div>
+        <div class="space-y-5">
+          <div>
+            <label class="block text-sm font-semibold text-slate-700">Username</label>
+            <input type="text" id="username" class="mt-1.5 block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition outline-none" placeholder="กรอกชื่อผู้ใช้">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-slate-700">Password</label>
+            <input type="password" id="password" class="mt-1.5 block w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition outline-none" placeholder="••••••••">
+          </div>
+          <button onclick="login()" id="btn-login" class="w-full bg-indigo-600 text-white py-3 px-4 rounded-xl hover:bg-indigo-700 transition font-bold shadow-md shadow-indigo-200">เข้าสู่ระบบ</button>
+          <p id="login-error" class="text-rose-500 text-sm font-medium text-center hidden-page"></p>
+        </div>
+      </div>
+
+      
+      <div id="page-dashboard" class="hidden-page space-y-8 animate-in fade-in duration-500">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 class="text-2xl font-bold text-slate-800">ภาพรวมการเงิน</h2>
+          
+          <div class="flex items-center space-x-3">
+            <select id="time-filter" onchange="loadDashboard()" class="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-2 outline-none cursor-pointer shadow-sm font-medium transition">
+              <option value="this_month">เดือนนี้</option>
+              <option value="last_month">เดือนที่แล้ว</option>
+              <option value="this_year">ปีนี้</option>
+              <option value="all">ทั้งหมด</option>
+            </select>
+            
+            <button onclick="loadDashboard()" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold flex items-center bg-indigo-50 px-3 py-2 rounded-xl transition">
+              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              อัปเดต
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+            <div class="p-4 bg-emerald-100 rounded-xl text-emerald-600">
+              <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                </path>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm text-slate-500 font-medium">ยอดคงเหลือรวม</p>
+              <p class="text-2xl font-bold text-slate-900">฿<span id="display-balance">0.00</span></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+          <h3 class="text-lg font-bold text-slate-700 mb-6">สถิติรายรับ - รายจ่าย</h3>
+          <div class="relative" style="height: 350px;">
+            <canvas id="financeChart"></canvas>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-slate-700">รายการล่าสุด</h3>
+            <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">10 รายการล่าสุด</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 text-xs uppercase tracking-widest">
+                  <th class="px-6 py-4 font-semibold">วันที่</th>
+                  <th class="px-6 py-4 font-semibold">รายการ</th>
+                  <th class="px-6 py-4 font-semibold">ประเภท</th>
+                  <th class="px-6 py-4 font-semibold text-right">จำนวนเงิน</th>
+                  <th class="px-6 py-4 font-semibold text-center">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="recent-table-body" class="divide-y divide-slate-100 text-sm">
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        
+
+      </div>
+
+      <div id="page-transaction"
+        class="hidden-page max-w-2xl mx-auto bg-white rounded-2xl shadow-sm p-8 border border-slate-100 animate-in slide-in-from-bottom-4 duration-500">
+        <h2 class="text-2xl font-bold mb-8 text-slate-800 border-b pb-4">บันทึกรายรับ-รายจ่าย</h2>
+        <form id="tx-form" class="space-y-6" onsubmit="submitTransaction(event)">
+
+          <div class="flex p-1 bg-slate-100 rounded-xl">
+            <label class="flex-1 text-center cursor-pointer">
+              <input type="radio" name="txType" value="income" class="sr-only peer" checked>
+              <span class="block py-2 rounded-lg peer-checked:bg-emerald-500 peer-checked:text-white transition font-semibold text-slate-600">รายรับ</span>
+            </label>
+            <label class="flex-1 text-center cursor-pointer">
+              <input type="radio" name="txType" value="expense" class="sr-only peer">
+              <span class="block py-2 rounded-lg peer-checked:bg-rose-500 peer-checked:text-white transition font-semibold text-slate-600">รายจ่าย</span>
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">วันที่</label>
+              <input type="date" id="txDate" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">จำนวนเงิน (บาท)</label>
+              <input type="number" id="txAmount" min="0" step="0.01" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" required>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-slate-700">รายละเอียด <span class="text-slate-400 font-normal">(ระบุหรือไม่ระบุก็ได้)</span></label>
+            <input type="text" id="txDesc" placeholder="เช่น เงินเดือน, ค่าอาหาร" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
+          </div>
+
+          <button type="submit" id="btn-tx" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-bold shadow-lg shadow-indigo-100">บันทึกข้อมูล</button>
+        </form>
+      </div>
+
+      <div id="page-receipt"
+        class="hidden-page max-w-3xl mx-auto bg-white rounded-2xl shadow-sm p-8 border border-slate-100 animate-in slide-in-from-bottom-4 duration-500">
+        <h2 class="text-2xl font-bold mb-8 text-slate-800 border-b pb-4">บันทึกใบเสร็จ</h2>
+        <form id="receipt-form" class="space-y-6" onsubmit="submitReceipt(event)">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">วันที่บนใบเสร็จ</label>
+              <input type="date" id="rcDate" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">ชื่อร้านค้า / ผู้รับเงิน</label>
+              <input type="text" id="rcShop" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ชื่อร้าน" required>
+            </div>
+          </div>
+
+          <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-bold text-slate-700">รายการสินค้า / บริการ</h3>
+              <button type="button" onclick="addReceiptItem()" class="text-sm bg-white border border-slate-200 hover:bg-slate-100 text-indigo-600 font-bold py-1.5 px-4 rounded-lg transition shadow-sm">+ เพิ่มแถว</button>
+            </div>
+            <div id="receipt-items-container" class="space-y-3">
+              <div
+                class="flex flex-wrap md:flex-nowrap gap-2 items-center receipt-item bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                <input type="text" class="item-name flex-1 min-w-[150px] px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="รายการ" required>
+                <input type="number" class="item-price w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ราคา" required>
+                <input type="number" class="item-qty w-20 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value="1" required>
+                <button type="button" onclick="this.parentElement.remove()" class="text-rose-400 hover:text-rose-600 p-2 transition">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-rc" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 transition font-bold shadow-lg shadow-indigo-100">บันทึกใบเสร็จ</button>
+        </form>
+      </div>
+      
+      <!-- หน้าจัดการผู้ใช้ -->
+      <div id="page-users" class="hidden-page max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+        
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+          <h2 class="text-2xl font-bold mb-6 text-slate-800 border-b pb-4">เพิ่มผู้ใช้งานใหม่</h2>
+          <form id="add-user-form" class="grid grid-cols-1 md:grid-cols-2 gap-6" onsubmit="submitNewUser(event)">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">ชื่อ-นามสกุล</label>
+              <input type="text" id="new-name" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">ระดับสิทธิ์ (Role)</label>
+              <select id="new-role" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                <option value="user">พนักงานทั่วไป (User)</option>
+                <option value="manager">ผู้จัดการ (Manager)</option>
+                <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">Username</label>
+              <input type="text" id="new-username" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700">Password</label>
+              <input type="password" id="new-password" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl" required>
+            </div>
+            <div class="md:col-span-2 mt-2">
+              <button type="submit" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition">ยืนยันการเพิ่มผู้ใช้</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+          <div class="p-6 border-b border-slate-100">
+            <h3 class="text-lg font-bold text-slate-700">รายชื่อผู้ใช้ในระบบ</h3>
+          </div>
+          <table class="w-full text-left">
+            <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-widest">
+              <tr>
+                <th class="px-6 py-4">ชื่อพนักงาน</th>
+                <th class="px-6 py-4">Username</th>
+                <th class="px-6 py-4">ตำแหน่ง (Role)</th>
+              </tr>
+            </thead>
+            <tbody id="users-table-body" class="divide-y divide-slate-100 text-sm">
+              <!-- ข้อมูลพนักงานจะถูกแทรกตรงนี้ -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+<div id="detail-modal"
+          class="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm hidden-page opacity-0 transition-opacity duration-300">
+          <div id="detail-card"
+            class="bg-white rounded-2xl w-full max-w-lg mx-4 overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 class="font-bold text-slate-800">รายละเอียดรายการ</h3>
+              <button onclick="closeDetail()" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div id="detail-content" class="p-8 space-y-4">
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 text-right">
+              <button onclick="closeDetail()" class="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold transition">ปิดหน้าต่าง</button>
+            </div>
+          </div>
+        </div>
+
+  <div id="confirm-modal" class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm hidden-page opacity-0 transition-opacity duration-300">
+          <div id="confirm-card" class="bg-white rounded-3xl w-[90%] max-w-sm p-8 text-center shadow-2xl transform scale-95 transition-transform duration-300 border border-slate-100">
+            
+            <div class="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-8 ring-rose-50/50">
+              <svg class="w-10 h-10 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+              </svg>
+            </div>
+            
+            <h3 id="confirm-title" class="text-xl font-extrabold text-slate-800 mb-2">ยืนยันการดำเนินการ?</h3>
+            <p id="confirm-message" class="text-sm text-slate-500 mb-8 font-medium">คุณแน่ใจหรือไม่ที่จะทำสิ่งนี้?</p>
+            
+            <div class="flex space-x-3">
+              <button onclick="closeConfirmModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition">ปิดหน้าต่าง</button>
+              <button id="btn-confirm-action" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 rounded-xl transition shadow-lg shadow-rose-200">ยืนยันยกเลิก</button>
+            </div>
+
+          </div>
+        </div>
+
+  <div id="edit-modal" class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm hidden-page opacity-0 transition-opacity duration-300">
+  <div id="edit-card" class="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300">
+    <h3 class="text-xl font-extrabold text-slate-800 mb-6 border-b pb-4">แก้ไขรายการ <span id="edit-tx-id" class="text-indigo-600"></span></h3>
+    
+    <form id="edit-form" class="space-y-4" onsubmit="submitEdit(event)">
+      <input type="hidden" id="edit-id"> <div>
+        <label class="block text-sm font-semibold text-slate-700">วันที่</label>
+        <input type="date" id="edit-date" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" required>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-semibold text-slate-700">รายการ</label>
+        <input type="text" id="edit-desc" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" required>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-semibold text-slate-700">จำนวนเงิน</label>
+        <input type="number" id="edit-amount" step="0.01" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" required>
+      </div>
+
+      <div class="flex space-x-3 pt-4">
+        <button type="button" onclick="closeEditModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition">ยกเลิก</button>
+        <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-lg">บันทึกการแก้ไข</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="edit-user-modal" class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm hidden-page opacity-0 transition-opacity duration-300">
+  <div id="edit-user-card" class="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300">
+    <h3 class="text-xl font-extrabold text-slate-800 mb-6 border-b pb-4">แก้ไขข้อมูลผู้ใช้: <span id="edit-user-display" class="text-indigo-600"></span></h3>
+    
+    <form id="edit-user-form" class="space-y-4" onsubmit="submitEditUser(event)">
+      <input type="hidden" id="edit-u-username"> <div>
+        <label class="block text-sm font-semibold text-slate-700">ชื่อ-นามสกุล</label>
+        <input type="text" id="edit-u-name" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" required>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-semibold text-slate-700">ตำแหน่ง (Role)</label>
+        <select id="edit-u-role" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+          <option value="user">พนักงานทั่วไป (User)</option>
+          <option value="manager">ผู้จัดการ (Manager)</option>
+          <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+        </select>
+      </div>
+      
+      <div class="p-4 bg-amber-50 rounded-xl border border-amber-100">
+        <label class="block text-sm font-semibold text-amber-800">รหัสผ่านใหม่ (ปล่อยว่างไว้ถ้าไม่ต้องการเปลี่ยน)</label>
+        <input type="password" id="edit-u-password" class="mt-1.5 block w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl outline-none" placeholder="••••••••">
+      </div>
+
+      <div class="flex space-x-3 pt-4">
+        <button type="button" onclick="closeEditUserModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl transition">ยกเลิก</button>
+        <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl transition shadow-lg">บันทึกข้อมูล</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+  <?!= include('script'); ?>
+</body>
+
+</html>

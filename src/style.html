@@ -1,0 +1,28 @@
+<style>
+    body {
+      font-family: 'Prompt', sans-serif;
+      background-color: #f8fafc;
+    }
+
+    /* ใช้ !important เพื่อบังคับซ่อนองค์ประกอบอย่างเด็ดขาด */
+    .hidden-page {
+      display: none !important;
+    }
+
+    @keyframes loading-bar-sweep {
+      0% {
+        left: -50%;
+        width: 50%;
+      }
+
+      100% {
+        left: 100%;
+        width: 50%;
+      }
+    }
+
+    .animate-loading-bar {
+      position: absolute;
+      animation: loading-bar-sweep 1.5s ease-in-out infinite;
+    }
+  </style>

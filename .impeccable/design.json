@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-12T00:00:00.000Z",
+  "title": "Design System: FinSystem",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Indigo 600", "canonical": "#4f46e5" },
+      "success": { "role": "success", "displayName": "Emerald 500", "canonical": "#10b981" },
+      "danger": { "role": "danger", "displayName": "Rose 500", "canonical": "#f43f5e" },
+      "warning": { "role": "warning", "displayName": "Amber 600", "canonical": "#d97706" },
+      "neutral-bg": { "role": "neutral", "displayName": "Slate 50", "canonical": "#f8fafc" },
+      "neutral-text": { "role": "neutral", "displayName": "Slate 800", "canonical": "#1e293b" },
+      "sidebar-bg": { "role": "neutral", "displayName": "Indigo 950", "canonical": "#1e1b4b" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles and summaries." },
+      "body": { "displayName": "Body", "purpose": "Primary content and data." },
+      "label": { "displayName": "Label", "purpose": "Headers and helper text." }
+    },
+    "shadows": [
+      { "name": "shadow-sm", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "Base card elevation." },
+      { "name": "shadow-lg", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1)", "purpose": "Active elements and CTAs." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action button for form submissions.",
+      "html": "<button class=\"ds-btn-primary\">บันทึกข้อมูล</button>",
+      "css": ".ds-btn-primary { background-color: #4f46e5; color: #ffffff; padding: 0.75rem 1rem; border-radius: 0.75rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.1); } .ds-btn-primary:hover { background-color: #4338ca; }"
+    },
+    {
+      "name": "Standard Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The container for all main content sections.",
+      "html": "<div class=\"ds-card\">การเงินวันนี้</div>",
+      "css": ".ds-card { background-color: #ffffff; border-radius: 1.5rem; padding: 2rem; border: 1px solid #f1f5f9; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }"
+    },
+    {
+      "name": "Data Input",
+      "kind": "input",
+      "description": "Standard text or number input field.",
+      "html": "<input class=\"ds-input\" placeholder=\"0.00\">",
+      "css": ".ds-input { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.625rem 1rem; width: 100%; outline: none; transition: ring 0.2s; } .ds-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }"
+    },
+    {
+      "name": "Status Badge (Income)",
+      "kind": "chip",
+      "description": "Indicates a positive financial transaction.",
+      "html": "<span class=\"ds-badge-success\">รายรับ</span>",
+      "css": ".ds-badge-success { background-color: #ecfdf5; color: #10b981; padding: 0.25rem 0.625rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Precision Ledger",
+    "overview": "A financial management interface designed for clarity, speed, and accuracy. The system uses a high-contrast Indigo theme to convey professional trust, balanced with soft Slate neutrals to keep the focus on financial data.",
+    "keyCharacteristics": [
+      "Indigo Authority: Deep indigo surfaces provide structure and hierarchy.",
+      "Color-Coded Feedback: Semantic use of Emerald (Income) and Rose (Expense).",
+      "Rounded Precision: Consistent 12px-16px corner radii."
+    ],
+    "rules": [
+      { "name": "The Semantic Meaning Rule", "body": "Color is never used decoratively. If a text or icon is Emerald, it MUST relate to 'Income' or 'Success'.", "section": "colors" },
+      { "name": "The Flat-Surface Rule", "body": "All data containers remain flat at rest. Elevation is only applied to interactive components or prioritized surfaces.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use rounded-xl for all primary containers and buttons.",
+      "Do maintain a minimum of 2rem padding in main content cards."
+    ],
+    "donts": [
+      "Don't use border-left greater than 1px as a colored stripe on cards.",
+      "Don't use cluttered enterprise-style tables."
+    ]
+  }
+}
