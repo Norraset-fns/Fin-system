@@ -148,34 +148,64 @@
       }
     }).saveReceipt(formData);
   }
-    // --- Authentication ---
-    function login() {
+  // --- Onboarding Control ---
+  function showOnboarding(forced = false) {
+    const hasSeen = localStorage.getItem('finsystem-onboarding-seen');
+    if (hasSeen && !forced) return;
+
+    const modal = document.getElementById('onboarding-modal');
+    const card = document.getElementById('onboarding-card');
+
+    modal.classList.remove('hidden-page');
+    setTimeout(() => {
+      modal.classList.remove('opacity-0');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+    }, 10);
+  }
+
+  function closeOnboarding() {
+    localStorage.setItem('finsystem-onboarding-seen', 'true');
+    const modal = document.getElementById('onboarding-modal');
+    const card = document.getElementById('onboarding-card');
+
+    modal.classList.add('opacity-0');
+    card.classList.remove('scale-100');
+    card.classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden-page'), 500);
+  }
+
+  // แก้ไขฟังก์ชัน login ให้เรียก Onboarding
+  function login() {
     const user = document.getElementById('username').value;
     const pass = document.getElementById('password').value;
-    
+
     // ถ้ากรอกไม่ครบ ให้เด้ง showError เลย
-    if(!user || !pass) return showError('ข้อมูลไม่ครบถ้วน', 'กรุณากรอก Username และ Password');
+    if (!user || !pass) return showError('ข้อมูลไม่ครบถ้วน', 'กรุณากรอก Username และ Password');
 
     showLoading('กำลังเข้าสู่ระบบ', 'ตรวจสอบข้อมูลประจำตัว...');
 
-    google.script.run.withSuccessHandler(function(response) {
+    google.script.run.withSuccessHandler(function (response) {
       if (response.success) {
-        
+
         // ถ้าล็อกอินถูก โชว์ Success แล้วค่อยเปลี่ยนหน้า
-        showSuccess('เข้าสู่ระบบสำเร็จ', 'กำลังเตรียมหน้าแดชบอร์ด...', function() {
+        showSuccess('เข้าสู่ระบบสำเร็จ', 'กำลังเตรียมหน้าแดชบอร์ด...', function () {
           currentUser = response.data;
           document.getElementById('user-name').innerText = currentUser.name;
           document.getElementById('user-role').innerText = currentUser.role;
-          
+
           // ซ่อนข้อความ Error สีแดงใต้ฟอร์ม (ถ้ามีค้างอยู่)
-          document.getElementById('login-error').style.display = 'none'; 
-          
+          document.getElementById('login-error').style.display = 'none';
+
           document.getElementById('sidebar').classList.remove('hidden-page');
           document.getElementById('mobile-header').classList.remove('hidden-page');
-          
+
           setupMenuAccess();
-          if(currentUser.role === 'admin' || currentUser.role === 'manager') navigate('dashboard');
+          if (currentUser.role === 'admin' || currentUser.role === 'manager') navigate('dashboard');
           else navigate('transaction');
+
+          // 🆕 เช็กการเปิด Onboarding ครั้งแรก
+          setTimeout(() => showOnboarding(), 1000);
         });
 
       } else {
@@ -229,43 +259,59 @@
     }
 
     // --- Dashboard & Data ---
-// --- Dashboard Update ---
-function loadDashboard() {
-  if (!currentUser) return; // ถ้ายังไม่ล็อกอิน ให้หยุดทำงาน
+    // --- Dashboard Update ---
+    function loadDashboard() {
+      if (!currentUser) return; // ถ้ายังไม่ล็อกอิน ให้หยุดทำงาน
 
-  // 1. ดึงค่าตัวกรองเวลาจาก Dropdown
-  const filterElement = document.getElementById('time-filter');
-  const filterValue = filterElement ? filterElement.value : 'this_month';
+      // 1. ดึงค่าตัวกรองเวลาจาก Dropdown
+      const filterElement = document.getElementById('time-filter');
+      const filterValue = filterElement ? filterElement.value : 'this_month';
 
-  // 2. ส่งค่า username, role และ filterValue ไปให้หลังบ้าน
-  google.script.run.withSuccessHandler(function(data) {
-    
-    // อัปเดตยอดเงินรวม
-    document.getElementById('display-balance').innerText = data.balance.toLocaleString(undefined, {minimumFractionDigits: 2});
-    
-    // อัปเดตกราฟ
-    renderChart(data); 
+      // 2. ส่งค่า username, role และ filterValue ไปให้หลังบ้าน
+      google.script.run.withSuccessHandler(function (data) {
 
-    // อัปเดตตาราง
-    const tbody = document.getElementById('recent-table-body');
-    tbody.innerHTML = ''; 
+        // อัปเดตยอดเงินรวม
+        document.getElementById('display-balance').innerText = data.balance.toLocaleString(undefined, { minimumFractionDigits: 2 });
 
-    // --- แก้ไขใน loadDashboard() ตรงส่วนวนลูปตาราง ---
-    data.recentItems.forEach(item => {
-      const isIncome = item.type === 'income';
-      
-      // 🛠️ เพิ่มเงื่อนไขเช็กสิทธิ์: ถ้าเป็น admin/manager ให้มีปุ่มยกเลิกเพิ่มขึ้นมา
-      let actionButtons = `<button onclick='showDetail(${JSON.stringify(item)})' class="text-indigo-600 hover:text-indigo-800 font-bold text-xs p-2 hover:bg-indigo-50 rounded-lg transition">ดูข้อมูล</button>`;
-      
-      if (currentUser.role === 'admin' || currentUser.role === 'manager') {
-        // เพิ่มปุ่มแก้ไข (สีส้ม)
-        actionButtons += `<button onclick='openEditModal(${JSON.stringify(item)})' class="ml-2 text-amber-600 hover:text-amber-800 font-bold text-xs p-2 hover:bg-amber-50 rounded-lg transition">แก้ไข</button>`;
-        
-        // ปุ่มยกเลิก (มีอยู่แล้ว)
-        actionButtons += `<button onclick='voidTransaction("${item.id}")' class="ml-2 text-rose-600 hover:text-rose-800 font-bold text-xs p-2 hover:bg-rose-50 rounded-lg transition">ยกเลิก</button>`;
-      }
+        // อัปเดตกราฟ
+        renderChart(data);
 
-      const row = `
+        // อัปเดตตาราง
+        const tbody = document.getElementById('recent-table-body');
+        tbody.innerHTML = '';
+
+        if (!data.recentItems || data.recentItems.length === 0) {
+          tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="px-6 py-12 text-center">
+            <div class="flex flex-col items-center">
+              <div class="p-4 bg-slate-50 rounded-full mb-4">
+                <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+              </div>
+              <h4 class="text-slate-800 font-bold mb-1">ยังไม่มีรายการบันทึก</h4>
+              <p class="text-slate-500 text-sm mb-6">เริ่มบันทึกรายรับหรือรายจ่ายรายการแรกของคุณเลย!</p>
+              <button onclick="navigate('transaction')" class="bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition">เพิ่มรายการใหม่</button>
+            </div>
+          </td>
+        </tr>
+      `;
+        } else {
+          // --- แก้ไขใน loadDashboard() ตรงส่วนวนลูปตาราง ---
+          data.recentItems.forEach(item => {
+            const isIncome = item.type === 'income';
+
+            // 🛠️ เพิ่มเงื่อนไขเช็กสิทธิ์: ถ้าเป็น admin/manager ให้มีปุ่มยกเลิกเพิ่มขึ้นมา
+            let actionButtons = `<button onclick='showDetail(${JSON.stringify(item)})' class="text-indigo-600 hover:text-indigo-800 font-bold text-xs p-2 hover:bg-indigo-50 rounded-lg transition">ดูข้อมูล</button>`;
+
+            if (currentUser.role === 'admin' || currentUser.role === 'manager') {
+              // เพิ่มปุ่มแก้ไข (สีส้ม)
+              actionButtons += `<button onclick='openEditModal(${JSON.stringify(item)})' class="ml-2 text-amber-600 hover:text-amber-800 font-bold text-xs p-2 hover:bg-amber-50 rounded-lg transition">แก้ไข</button>`;
+
+              // ปุ่มยกเลิก (มีอยู่แล้ว)
+              actionButtons += `<button onclick='voidTransaction("${item.id}")' class="ml-2 text-rose-600 hover:text-rose-800 font-bold text-xs p-2 hover:bg-rose-50 rounded-lg transition">ยกเลิก</button>`;
+            }
+
+            const row = `
         <tr class="hover:bg-slate-50/80 transition">
           <td class="px-6 py-4 text-slate-500">${formatDate(item.date)}</td>
           <td class="px-6 py-4 font-medium text-slate-700">${item.description}</td>
@@ -275,7 +321,7 @@ function loadDashboard() {
             </span>
           </td>
           <td class="px-6 py-4 text-right font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">
-            ${isIncome ? '+' : '-'}${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}
+            ${isIncome ? '+' : '-'}${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </td>
           <td class="px-6 py-4 text-center">
             ${actionButtons} 
@@ -283,12 +329,13 @@ function loadDashboard() {
            
         </tr>
       `;
-      tbody.insertAdjacentHTML('beforeend', row);
-    });
-    
-  // 🔴 ส่งพัสดุ 3 ชิ้นไปให้ Code.gs (ห้ามลบเด็ดขาด)
-  }).getDashboardData(currentUser.username, currentUser.role, filterValue); 
-}
+            tbody.insertAdjacentHTML('beforeend', row);
+          });
+        }
+
+        // 🔴 ส่งพัสดุ 3 ชิ้นไปให้ Code.gs (ห้ามลบเด็ดขาด)
+      }).getDashboardData(currentUser.username, currentUser.role, filterValue);
+    }
 
     // --- Helpers ---
     function addReceiptItem() {
@@ -481,12 +528,23 @@ function formatDate(dateStr) {
 // ฟังก์ชันจัดการผู้ใช้ (เฉพาะ Admin)
 // ==========================================
 
-function loadUsers() {
-  google.script.run.withSuccessHandler(function(usersList) {
-    const tbody = document.getElementById('users-table-body');
-    tbody.innerHTML = ''; 
-    
-    usersList.forEach(user => {
+    function loadUsers() {
+      google.script.run.withSuccessHandler(function (usersList) {
+        const tbody = document.getElementById('users-table-body');
+        tbody.innerHTML = '';
+
+        if (!usersList || usersList.length === 0) {
+          tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="px-6 py-12 text-center text-slate-500">
+            ยังไม่มีผู้ใช้งานอื่นในระบบ
+          </td>
+        </tr>
+      `;
+          return;
+        }
+
+        usersList.forEach(user => {
       // ทำสีป้าย Role ให้ดูง่ายๆ
       let roleBadge = '';
       if(user.role === 'admin') roleBadge = '<span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-bold">Admin</span>';

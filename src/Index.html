@@ -106,6 +106,13 @@
         <svg class="w-5 h-5 mr-3 text-indigo-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
         จัดการผู้ใช้งาน
       </button>
+
+      <div class="pt-4 mt-4 border-t border-indigo-800/50">
+        <button onclick="showOnboarding(true)" class="w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium text-indigo-300 hover:bg-indigo-800 hover:text-white transition group">
+          <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          คู่มือการใช้งาน
+        </button>
+      </div>
     </nav>
 
     <div class="p-6 bg-indigo-950 border-t border-indigo-800">
@@ -450,6 +457,65 @@
     </form>
   </div>
 </div>
+
+  <div id="onboarding-modal" class="fixed inset-0 z-[130] flex items-center justify-center bg-slate-900/60 backdrop-blur-md hidden-page opacity-0 transition-opacity duration-500">
+    <div id="onboarding-card" class="bg-white rounded-[2.5rem] w-full max-w-lg mx-4 overflow-hidden shadow-2xl transform scale-95 transition-all duration-500">
+      
+      <div class="relative h-48 bg-indigo-600 flex items-center justify-center overflow-hidden">
+        <div class="absolute inset-0 opacity-10">
+          <svg class="w-full h-full" fill="currentColor" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M0 100 C 20 0 50 0 100 100 Z"></path>
+          </svg>
+        </div>
+        <div class="relative z-10 text-center text-white p-8">
+          <div class="w-20 h-20 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center mx-auto mb-4 ring-8 ring-white/10">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          </div>
+          <h2 class="text-2xl font-black tracking-tight">ยินดีต้อนรับสู่ FinSystem</h2>
+        </div>
+      </div>
+
+      <div class="p-10">
+        <div id="onboarding-steps" class="space-y-8">
+          <!-- Step 1 -->
+          <div class="onboarding-step flex gap-6">
+            <div class="flex-shrink-0 w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 font-bold">1</div>
+            <div>
+              <h4 class="font-bold text-slate-800 mb-1">แดชบอร์ดอัจฉริยะ</h4>
+              <p class="text-slate-500 text-sm leading-relaxed">ดูภาพรวมรายรับ-รายจ่าย และสถิติการเงินของคุณได้ในหน้าเดียว พร้อมระบบกรองเวลาที่แม่นยำ</p>
+            </div>
+          </div>
+          <!-- Step 2 -->
+          <div class="onboarding-step flex gap-6">
+            <div class="flex-shrink-0 w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 font-bold">2</div>
+            <div>
+              <h4 class="font-bold text-slate-800 mb-1">บันทึกง่ายและรวดเร็ว</h4>
+              <p class="text-slate-500 text-sm leading-relaxed">บันทึกรายการรายวัน หรือจะแนบใบเสร็จแบบละเอียดแยกรายการสินค้าก็ทำได้ทันที</p>
+            </div>
+          </div>
+          <!-- Step 3 -->
+          <div class="onboarding-step flex gap-6">
+            <div class="flex-shrink-0 w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 font-bold">3</div>
+            <div>
+              <h4 class="font-bold text-slate-800 mb-1">ความปลอดภัยระดับสูง</h4>
+              <p class="text-slate-500 text-sm leading-relaxed">ข้อมูลของคุณถูกเข้ารหัสและจัดเก็บอย่างปลอดภัยบน Google Sheets พร้อมระบบสิทธิ์การเข้าถึง</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-12 flex items-center justify-between gap-4">
+          <div class="flex gap-1">
+            <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
+            <div class="w-2 h-2 bg-slate-200 rounded-full"></div>
+            <div class="w-2 h-2 bg-slate-200 rounded-full"></div>
+          </div>
+          <button onclick="closeOnboarding()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-2xl transition shadow-lg shadow-indigo-100">
+            เริ่มต้นใช้งานเลย
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <?!= include('script'); ?>
 </body>
