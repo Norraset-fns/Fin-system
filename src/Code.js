@@ -14,65 +14,67 @@ function doGet() {
 function authenticate(username, password) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
-    const sheet = ss.getSheetByName("DB_ระบบบันทึกรายรับรายจ่าย"); // อย่าลืมเช็กชื่อแท็บให้ตรงกับของคุณนะครับ
-    const data = sheet.getDataRange().getValues();
+    const sheet = ss.getSheetByName("DB_ระบบบันทึกรายรับรายจ่าย"); 
+    const lastRow = sheet.getLastRow();
+    
+    if (lastRow <= 1) return { success: false, message: "ไม่พบชื่อผู้ใช้งานนี้ในระบบ" };
 
-    // วนลูปหา Username
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === username) {
-        const storedPasswordString = data[i][1].toString(); // ดึงข้อมูลก้อน salt$hash มา
-
-        // 1. ตรวจสอบว่าข้อมูลในชีตเป็นระบบ Hash+Salt (มีเครื่องหมาย $) หรือยัง
-        if (storedPasswordString.includes("$")) {
-          // หั่นแยกเกลือกับแฮชออกจากกัน
-          const parts = storedPasswordString.split("$");
-          const salt = parts[0];
-          const storedHash = parts[1];
-
-          // นำรหัสผ่านที่กรอกมาหน้าเว็บ บวกกับเกลือ แล้วปั่นเป็น Hash เพื่อเทียบกัน
-          const rawHash = Utilities.computeDigest(
-            Utilities.DigestAlgorithm.SHA_256,
-            password + salt,
-          );
-          const computedHash = rawHash
-            .map(function (byte) {
-              return ("0" + (byte & 0xff).toString(16)).slice(-2);
-            })
-            .join("");
-
-          // ถ้า Hash ตรงกันเป๊ะ แปลว่ารหัสถูกต้อง!
-          if (computedHash === storedHash) {
-            return {
-              success: true,
-              data: {
-                username: data[i][0],
-                role: data[i][2],
-                name: data[i][3],
-              },
-            };
-          } else {
-            return { success: false, message: "รหัสผ่านไม่ถูกต้อง" };
-          }
-        } else {
-          // 2. เผื่อกรณีฉุกเฉิน (มีบางบัญชียังเป็นข้อความธรรมดา ยังไม่ได้แปลง)
-          if (password === storedPasswordString) {
-            return {
-              success: true,
-              data: {
-                username: data[i][0],
-                role: data[i][2],
-                name: data[i][3],
-              },
-            };
-          } else {
-            return { success: false, message: "รหัสผ่านไม่ถูกต้อง" };
-          }
-        }
+    // ดึงเฉพาะคอลัมน์ A (Username) มาตรวจสอบก่อนเพื่อความเร็ว
+    const usernames = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    
+    let rowIndex = -1;
+    for (let i = 0; i < usernames.length; i++) {
+      if (usernames[i][0] === username) {
+        rowIndex = i + 2; // +2 เพราะเริ่มต้นที่บรรทัด 2 และ Index ของ Array เริ่มที่ 0
+        break;
       }
     }
 
-    // ถ้าวนลูปจนจบแล้วยังไม่เจอ Username
-    return { success: false, message: "ไม่พบชื่อผู้ใช้งานนี้ในระบบ" };
+    if (rowIndex === -1) {
+      return { success: false, message: "ไม่พบชื่อผู้ใช้งานนี้ในระบบ" };
+    }
+
+    // เมื่อเจอ Username แล้ว ค่อยไปดึงข้อมูลที่เหลือของแถวนั้น (B, C, D)
+    const userData = sheet.getRange(rowIndex, 1, 1, 4).getValues()[0];
+    const storedPasswordString = userData[1].toString();
+    const role = userData[2];
+    const name = userData[3];
+
+    // 1. ตรวจสอบว่าข้อมูลในชีตเป็นระบบ Hash+Salt (มีเครื่องหมาย $) หรือยัง
+    if (storedPasswordString.includes("$")) {
+      const parts = storedPasswordString.split("$");
+      const salt = parts[0];
+      const storedHash = parts[1];
+
+      const rawHash = Utilities.computeDigest(
+        Utilities.DigestAlgorithm.SHA_256,
+        password + salt,
+      );
+      const computedHash = rawHash
+        .map(function (byte) {
+          return ("0" + (byte & 0xff).toString(16)).slice(-2);
+        })
+        .join("");
+
+      if (computedHash === storedHash) {
+        return {
+          success: true,
+          data: { username: username, role: role, name: name },
+        };
+      } else {
+        return { success: false, message: "รหัสผ่านไม่ถูกต้อง" };
+      }
+    } else {
+      // 2. กรณีรหัสผ่านธรรมดา
+      if (password === storedPasswordString) {
+        return {
+          success: true,
+          data: { username: username, role: role, name: name },
+        };
+      } else {
+        return { success: false, message: "รหัสผ่านไม่ถูกต้อง" };
+      }
+    }
   } catch (error) {
     return { success: false, message: error.toString() };
   }
@@ -83,13 +85,20 @@ function authenticate(username, password) {
 // ระบบจัดการผู้ใช้งาน (User Management)
 // ==========================================
 
-// 1. ฟังก์ชันดึงรายชื่อผู้ใช้ทั้งหมด (Read)
-function getUsers() {
+// 1. ฟังก์ชันดึงรายชื่อผู้ใช้ทั้งหมด (Read) - เพิ่มการเช็กสิทธิ์ Admin
+function getUsers(currentUserRole) {
+  if (currentUserRole !== "admin") {
+    return { success: false, message: "สิทธิ์ของคุณไม่เพียงพอในการดูรายชื่อผู้ใช้" };
+  }
+
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName("DB_ระบบบันทึกรายรับรายจ่าย");
+  const lastRow = sheet.getLastRow();
+  
+  if (lastRow <= 1) return [];
 
-  // ดึงข้อมูลตั้งแต่บรรทัดที่ 2 ถึงบรรทัดสุดท้าย คอลัมน์ที่ 1-4
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues();
+  // ดึงเฉพาะคอลัมน์ A (Username), C (Role), D (Name)
+  const data = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
 
   let usersList = [];
   data.forEach((row) => {
@@ -104,35 +113,35 @@ function getUsers() {
   return usersList;
 }
 
-// 2. ฟังก์ชันเพิ่มผู้ใช้ใหม่ (Create)
+// 2. ฟังก์ชันเพิ่มผู้ใช้ใหม่ (Create) - เพิ่ม LockService
 function addUser(formObj) {
+  const lock = LockService.getScriptLock();
   try {
+    lock.waitLock(30000); // รอคิว 30 วินาที
+
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName("DB_ระบบบันทึกรายรับรายจ่าย");
+    const lastRow = sheet.getLastRow();
 
-    // --- ด่านตรวจ (Validation) ---
     if (!formObj.username || !formObj.password || !formObj.name) {
       return { success: false, message: "กรุณากรอกข้อมูลให้ครบถ้วน" };
     }
 
-    // เช็กว่า Username นี้มีคนใช้ไปหรือยัง?
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === formObj.username) {
-        return {
-          success: false,
-          message: "Username นี้มีในระบบแล้ว กรุณาใช้ชื่ออื่น",
-        };
+    // เช็กว่า Username นี้มีคนใช้ไปหรือยัง? (ดึงเฉพาะคอลัมน์แรกมาเช็ก)
+    if (lastRow > 1) {
+      const usernames = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (let i = 0; i < usernames.length; i++) {
+        if (usernames[i][0] === formObj.username) {
+          return { success: false, message: "Username นี้มีในระบบแล้ว" };
+        }
       }
     }
 
-    // 🔐 เปลี่ยนมาใช้ฟังก์ชันแบบมี Salt
     const securePassword = generateSecurePassword(formObj.password);
 
-    // ถ้าผ่านด่านทั้งหมด ก็บันทึกคนใหม่ลงบรรทัดสุดท้าย
     sheet.appendRow([
       formObj.username,
-      securePassword, // สิ่งที่จะถูกบันทึกจะเป็นรูปแบบ (salt$hash)
+      securePassword,
       formObj.role,
       formObj.name,
     ]);
@@ -140,40 +149,42 @@ function addUser(formObj) {
     return { success: true, message: "เพิ่มผู้ใช้งานสำเร็จ!" };
   } catch (error) {
     return { success: false, message: error.toString() };
+  } finally {
+    lock.releaseLock();
   }
 }
 
-// 3. ฟังก์ชันอัปเดตข้อมูลผู้ใช้งาน (Update)
+// 3. ฟังก์ชันอัปเดตข้อมูลผู้ใช้งาน (Update) - เพิ่ม LockService
 function updateUser(formObj) {
+  const lock = LockService.getScriptLock();
   try {
+    lock.waitLock(30000);
+
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName("DB_ระบบบันทึกรายรับรายจ่าย");
-    const data = sheet.getDataRange().getValues();
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return { success: false, message: "ไม่พบข้อมูลในระบบ" };
 
-    // วนลูปหา Username ที่ต้องการแก้ไข (Username อยู่คอลัมน์ที่ 1 หรือ index 0)
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === formObj.username) {
-        const rowNum = i + 1;
+    const usernames = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
 
-        // อัปเดต ชื่อ และ ตำแหน่ง
-        sheet.getRange(rowNum, 3).setValue(formObj.role); // คอลัมน์ C: Role
-        sheet.getRange(rowNum, 4).setValue(formObj.name); // คอลัมน์ D: Name
+    for (let i = 0; i < usernames.length; i++) {
+      if (usernames[i][0] === formObj.username) {
+        const rowNum = i + 2;
+        sheet.getRange(rowNum, 3).setValue(formObj.role);
+        sheet.getRange(rowNum, 4).setValue(formObj.name);
 
-        // ถ้ามีการกรอกรหัสผ่านใหม่เข้ามา ให้ทำการเข้ารหัสแล้วบันทึกทับ
         if (formObj.password && formObj.password.trim() !== "") {
           const securePassword = generateSecurePassword(formObj.password);
-          sheet.getRange(rowNum, 2).setValue(securePassword); // คอลัมน์ B: Password
+          sheet.getRange(rowNum, 2).setValue(securePassword);
         }
-
-        return {
-          success: true,
-          message: "อัปเดตข้อมูลคุณ " + formObj.name + " เรียบร้อยแล้ว",
-        };
+        return { success: true, message: "อัปเดตข้อมูลสำเร็จ" };
       }
     }
     return { success: false, message: "ไม่พบชื่อผู้ใช้งานในระบบ" };
   } catch (error) {
     return { success: false, message: error.toString() };
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -221,17 +232,18 @@ function migrateOldPasswords() {
 
 // 3. บันทึกรายรับ-รายจ่าย (เพิ่มช่องว่างไว้สำหรับคอลัมน์ที่ 7)
 function saveTransaction(formObj) {
+  const lock = LockService.getScriptLock();
   try {
+    lock.waitLock(30000);
+
     // --- เริ่มด่านตรวจคนเข้าเมือง (Validation) ---
-    // 1. เช็กว่าส่งวันที่มาไหม?
     if (!formObj.date) {
       return { success: false, message: "กรุณาระบุวันที่ทำรายการ" };
     }
 
-    // 1.1 เช็กว่าเป็นวันที่ในอนาคตหรือไม่? (NEW!)
-    const inputDate = new Date(formObj.date); // แปลงวันที่ที่กรอกมาเป็น Date Object
-    const today = new Date(); // ดึงเวลาของวันนี้
-    today.setHours(23, 59, 59, 999); // ปรับเวลาของวันนี้ให้เป็นเที่ยงคืนสุดๆ จะได้เทียบแค่วันที่
+    const inputDate = new Date(formObj.date);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
 
     if (inputDate > today) {
       return {
@@ -240,7 +252,6 @@ function saveTransaction(formObj) {
       };
     }
 
-    // 2. เช็กว่ายอดเงินเป็นตัวเลขที่มากกว่า 0 หรือเปล่า? (ป้องกันส่งยอดเงิน 0 หรือยอดติดลบ)
     const amount = parseFloat(formObj.amount);
     if (isNaN(amount) || amount <= 0) {
       return { success: false, message: "จำนวนเงินต้องมากกว่า 0 บาท" };
@@ -251,19 +262,17 @@ function saveTransaction(formObj) {
     const sheet = ss.getSheetByName("Transactions");
     const timestamp = new Date();
 
-    // 1. เรียกใช้งานฟังก์ชันผู้ช่วย เพื่อสร้าง ID ใหม่ (กำหนดอักษรนำหน้าเป็น 'TX')
     const txId = getNextId("Transactions", "TX");
 
-    // 2. บันทึกข้อมูลลง Sheet โดยเพิ่ม txId ไว้ที่ช่องสุดท้าย (คอลัมน์ที่ 8)
     sheet.appendRow([
       timestamp,
       formObj.date,
       formObj.type,
       formObj.description,
-      parseFloat(formObj.amount),
+      amount,
       formObj.username,
-      "", // คอลัมน์ที่ 7: รายการสินค้า (เว้นว่างไว้สำหรับ Transaction ปกติ)
-      txId, // คอลัมน์ที่ 8: ID เอกสาร (เพิ่มเข้ามาใหม่!)
+      "", 
+      txId,
     ]);
 
     return {
@@ -272,12 +281,17 @@ function saveTransaction(formObj) {
     };
   } catch (error) {
     return { success: false, message: error.toString() };
+  } finally {
+    lock.releaseLock();
   }
 }
 
 // 4. บันทึกใบเสร็จ (พ่วง ID และ Validation)
 function saveReceipt(formObj) {
+  const lock = LockService.getScriptLock();
   try {
+    lock.waitLock(30000);
+
     // --- ด่านตรวจของใบเสร็จ (Validation) ---
     if (!formObj.date || !formObj.shopName) {
       return {
@@ -286,7 +300,6 @@ function saveReceipt(formObj) {
       };
     }
 
-    // เช็กว่าเป็นวันที่ในอนาคตหรือไม่? (NEW!)
     const inputDate = new Date(formObj.date);
     const today = new Date();
     today.setHours(23, 59, 59, 999);
@@ -298,7 +311,6 @@ function saveReceipt(formObj) {
       };
     }
 
-    // ประกาศ items ครั้งที่ 1 (และครั้งเดียว)
     const items = JSON.parse(formObj.items);
     if (items.length === 0) {
       return {
@@ -313,17 +325,14 @@ function saveReceipt(formObj) {
     const txSheet = ss.getSheetByName("Transactions");
     const timestamp = new Date();
 
-    // สร้าง ID ใหม่ 2 ตัว
     const rcId = getNextId("Receipts", "RC");
     const txId = getNextId("Transactions", "TX");
 
-    // คำนวณยอดรวม (ใช้ตัวแปร items จากด้านบนได้เลย ไม่ต้องประกาศ const ซ้ำ)
     let total = 0;
     items.forEach((item) => {
       total += parseFloat(item.price) * parseInt(item.qty);
     });
 
-    // บันทึกลงหน้า Receipts
     receiptSheet.appendRow([
       timestamp,
       formObj.date,
@@ -331,10 +340,9 @@ function saveReceipt(formObj) {
       formObj.items,
       total,
       formObj.username,
-      rcId, // ID ใบเสร็จ
+      rcId,
     ]);
 
-    // บันทึกลงหน้า Transactions
     txSheet.appendRow([
       timestamp,
       formObj.date,
@@ -343,7 +351,7 @@ function saveReceipt(formObj) {
       total,
       formObj.username,
       formObj.items,
-      txId, // ID รายจ่าย
+      txId,
     ]);
 
     return {
@@ -352,6 +360,8 @@ function saveReceipt(formObj) {
     };
   } catch (error) {
     return { success: false, message: error.toString() };
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -484,66 +494,69 @@ function getNextId(sheetName, prefix) {
 
 // ฟังก์ชันสำหรับยกเลิกรายการ (Void)
 function voidTransactionInSheet(txId) {
+  const lock = LockService.getScriptLock();
   try {
+    lock.waitLock(30000);
+
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName("Transactions");
-    const data = sheet.getDataRange().getValues();
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return { success: false, message: "ไม่พบข้อมูลในระบบ" };
 
-    // วนลูปหา ID ที่ต้องการ (ID อยู่คอลัมน์ที่ 8 หรือ index 7)
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][7] === txId) {
-        // ตรวจสอบก่อนว่ารายการนี้เคยถูกยกเลิกไปแล้วหรือยัง
-        if (data[i][3].toString().includes("[ยกเลิก]")) {
+    // ดึงเฉพาะคอลัมน์ H (ID) เพื่อหาบรรทัด
+    const ids = sheet.getRange(1, 8, lastRow, 1).getValues();
+
+    for (let i = 1; i < ids.length; i++) {
+      if (ids[i][0] === txId) {
+        const rowNum = i + 1;
+        const currentDesc = sheet.getRange(rowNum, 4).getValue();
+
+        if (currentDesc.toString().includes("[ยกเลิก]")) {
           return { success: false, message: "รายการนี้ถูกยกเลิกไปแล้ว" };
         }
 
-        const rowNum = i + 1; // บรรทัดที่ต้องการแก้ในชีต
-
-        // 1. ปรับยอดเงินเป็น 0 (คอลัมน์ที่ 5 หรือ index 4)
         sheet.getRange(rowNum, 5).setValue(0);
+        sheet.getRange(rowNum, 4).setValue("[ยกเลิก] " + currentDesc);
 
-        // 2. เพิ่มคำว่า [ยกเลิก] ไว้หน้าคำอธิบาย (คอลัมน์ที่ 4 หรือ index 3)
-        const oldDesc = data[i][3];
-        sheet.getRange(rowNum, 4).setValue("[ยกเลิก] " + oldDesc);
-
-        return {
-          success: true,
-          message: "ยกเลิกรายการ " + txId + " เรียบร้อยแล้ว",
-        };
+        return { success: true, message: "ยกเลิกรายการเรียบร้อยแล้ว" };
       }
     }
     return { success: false, message: "ไม่พบรหัสรายการในระบบ" };
   } catch (error) {
     return { success: false, message: error.toString() };
+  } finally {
+    lock.releaseLock();
   }
 }
 
 // ฟังก์ชันสำหรับอัปเดตข้อมูล (Edit)
 function updateTransactionInSheet(formObj) {
+  const lock = LockService.getScriptLock();
   try {
+    lock.waitLock(30000);
+
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName("Transactions");
-    const data = sheet.getDataRange().getValues();
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return { success: false, message: "ไม่พบข้อมูลในระบบ" };
 
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][7] === formObj.id) {
-        // หา ID ในคอลัมน์ที่ 8 (index 7)
+    const ids = sheet.getRange(1, 8, lastRow, 1).getValues();
+
+    for (let i = 1; i < ids.length; i++) {
+      if (ids[i][0] === formObj.id) {
         const rowNum = i + 1;
+        sheet.getRange(rowNum, 2).setValue(formObj.date);
+        sheet.getRange(rowNum, 4).setValue(formObj.description);
+        sheet.getRange(rowNum, 5).setValue(parseFloat(formObj.amount));
 
-        // เขียนทับลงไปในช่องที่ต้องการ
-        sheet.getRange(rowNum, 2).setValue(formObj.date); // คอลัมน์ B: วันที่
-        sheet.getRange(rowNum, 4).setValue(formObj.description); // คอลัมน์ D: รายการ
-        sheet.getRange(rowNum, 5).setValue(parseFloat(formObj.amount)); // คอลัมน์ E: จำนวนเงิน
-
-        return {
-          success: true,
-          message: "อัปเดตรายการ " + formObj.id + " เรียบร้อยแล้ว",
-        };
+        return { success: true, message: "อัปเดตรายการเรียบร้อยแล้ว" };
       }
     }
     return { success: false, message: "ไม่พบรหัสรายการในระบบ" };
   } catch (error) {
     return { success: false, message: error.toString() };
+  } finally {
+    lock.releaseLock();
   }
 }
 
