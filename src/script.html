@@ -229,9 +229,10 @@
 
     // --- Navigation & Role Control ---
     function navigate(pageId) {
-      const pages = ['page-login', 'page-dashboard', 'page-transaction', 'page-receipt', 'page-users'];
+      const pages = ['page-login', 'page-dashboard', 'page-history', 'page-transaction', 'page-receipt', 'page-users'];
 
       if(pageId === 'dashboard') loadDashboard();
+      if(pageId === 'history') loadHistory();
       if(pageId === 'users') loadUsers();
 
       pages.forEach(p => document.getElementById(p).classList.add('hidden-page'));
@@ -348,6 +349,56 @@
 
         // 🔴 ส่งพัสดุ 3 ชิ้นไปให้ Code.gs (ห้ามลบเด็ดขาด)
       }).getDashboardData(currentUser.username, currentUser.role, filterValue);
+    }
+
+    // --- History Page Data ---
+    function loadHistory() {
+      if (!currentUser) return;
+      
+      const searchQuery = document.getElementById('history-search').value;
+      const tbody = document.getElementById('history-table-body');
+      
+      // แสดง Loading ในตารางขณะรอข้อมูล
+      tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-400">กำลังโหลดข้อมูลประวัติ...</td></tr>`;
+
+      google.script.run.withSuccessHandler(function(historyData) {
+        tbody.innerHTML = '';
+        
+        if (!historyData || historyData.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-500 font-medium">ไม่พบรายการที่ตรงกับเงื่อนไขการค้นหา</td></tr>`;
+          return;
+        }
+
+        historyData.forEach(item => {
+          const isIncome = item.type === 'income';
+          
+          let actionButtons = `<button onclick='showDetail(${JSON.stringify(item)})' class="text-indigo-600 hover:text-indigo-800 font-bold text-xs p-2 hover:bg-indigo-50 rounded-lg transition">ดูข้อมูล</button>`;
+
+          if (currentUser.role === 'admin' || currentUser.role === 'manager') {
+            actionButtons += `<button onclick='openEditModal(${JSON.stringify(item)})' class="ml-1 text-amber-600 hover:text-amber-800 font-bold text-xs p-2 hover:bg-amber-50 rounded-lg transition">แก้ไข</button>`;
+            actionButtons += `<button onclick='voidTransaction("${item.id}")' class="ml-1 text-rose-600 hover:text-rose-800 font-bold text-xs p-2 hover:bg-rose-50 rounded-lg transition">ยกเลิก</button>`;
+          }
+
+          tbody.insertAdjacentHTML('beforeend', `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-50">
+              <td class="px-6 py-4 text-slate-500">${formatDate(item.date)}</td>
+              <td class="px-6 py-4 font-mono text-xs text-slate-400">${item.id}</td>
+              <td class="px-6 py-4 font-medium text-slate-700">${item.description}</td>
+              <td class="px-6 py-4">
+                <span class="px-2 py-1 rounded-full text-[10px] font-bold ${isIncome ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}">
+                  ${isIncome ? 'รายรับ' : 'รายจ่าย'}
+                </span>
+              </td>
+              <td class="px-6 py-4 text-right font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">
+                ${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </td>
+              <td class="px-6 py-4 text-center">
+                ${actionButtons}
+              </td>
+            </tr>
+          `);
+        });
+      }).getTransactionsHistory(currentUser.username, currentUser.role, searchQuery);
     }
 
     // --- Helpers ---

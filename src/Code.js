@@ -560,6 +560,59 @@ function updateTransactionInSheet(formObj) {
   }
 }
 
+// ฟังก์ชันดึงประวัติรายการแบบละเอียด (History) พร้อมระบบค้นหา
+function getTransactionsHistory(username, role, searchQuery) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("Transactions");
+    if (!sheet) return [];
+    
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return [];
+
+    // ดึงข้อมูลทั้งหมดมาจัดการ (ในระบบจริงควรทำ Surgical reads แต่อันนี้เน้น Filter หลายคอลัมน์)
+    const data = sheet.getDataRange().getValues();
+    let results = [];
+    const query = searchQuery ? searchQuery.toLowerCase() : "";
+
+    // วนลูปจากหลังไปหน้า เพื่อให้ได้รายการล่าสุดก่อน (Newest First)
+    for (let i = data.length - 1; i >= 1; i--) {
+      const row = data[i];
+      const rowUsername = row[5];
+      const rowDesc = row[3].toString().toLowerCase();
+      const rowId = row[7].toString().toLowerCase();
+      const rowDate = row[1].toString();
+
+      // 1. เช็กสิทธิ์ (Row-level Security)
+      if (role === "user" && rowUsername !== username) continue;
+
+      // 2. เช็กคำค้นหา (ถ้ามี)
+      if (query && !rowDesc.includes(query) && !rowId.includes(query) && !rowDate.includes(query)) {
+        continue;
+      }
+
+      results.push({
+        timestamp: row[0] ? row[0].toString() : "",
+        date: row[1] ? row[1].toString() : "",
+        type: row[2],
+        description: row[3],
+        amount: parseFloat(row[4]) || 0,
+        user: row[5],
+        itemsData: row[6] ? row[6].toString() : "",
+        id: row[7] ? row[7].toString() : ""
+      });
+
+      // จำกัดจำนวนที่ดึงมาแสดงเพื่อความรวดเร็ว (เช่น 100 รายการล่าสุดที่ตรงเงื่อนไข)
+      if (results.length >= 100) break;
+    }
+
+    return results;
+  } catch (error) {
+    console.error("getTransactionsHistory error:", error.toString());
+    return [];
+  }
+}
+
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
