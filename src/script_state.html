@@ -1,0 +1,41 @@
+<script>
+/**
+ * 1. script_state.html
+ * เก็บข้อมูลส่วนกลาง (State) และเครื่องมือพื้นฐาน (Utils)
+ */
+const FS_STATE = {
+  currentUser: null,
+  chart: null,
+  currentConfirmAction: null
+};
+
+const FS_UTILS = {
+  formatDate(str) {
+    if(!str) return '-';
+    return new Date(str).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' });
+  },
+  lockDates() {
+    const today = new Date().toISOString().split('T')[0];
+    ['txDate', 'rcDate'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).max = today; });
+  },
+  setupHotkeys() {
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        ['detail-modal', 'edit-modal', 'edit-user-modal', 'confirm-modal', 'onboarding-modal'].forEach(id => FS_UI.modal.hide(id));
+        if (window.innerWidth < 768) FS_UI.sidebar.close();
+      }
+      if (e.altKey && FS_STATE.currentUser) {
+        const map = { 'd': 'dashboard', 'n': 'transaction', 'r': 'receipt', 'u': 'users' };
+        const target = map[e.key.toLowerCase()];
+        if (target) {
+          e.preventDefault();
+          const role = FS_STATE.currentUser.role;
+          if (target === 'dashboard' && !['admin', 'manager'].includes(role)) return;
+          if (target === 'users' && role !== 'admin') return;
+          FS_UI.navigate(target);
+        }
+      }
+    });
+  }
+};
+</script>

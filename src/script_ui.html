@@ -1,0 +1,217 @@
+<script>
+/**
+ * 3. script_ui.html
+ * การจัดการหน้าจอ, การแสดงผล (Rendering) และ Template
+ */
+const FS_UI = {
+  // --- Navigation ---
+  navigate(pageId) {
+    const pages = ['page-login', 'page-dashboard', 'page-history', 'page-transaction', 'page-receipt', 'page-users'];
+    if(pageId === 'dashboard') FS_UI.render.dashboard();
+    if(pageId === 'history') FS_UI.render.history();
+    if(pageId === 'users') FS_UI.render.users();
+
+    pages.forEach(p => document.getElementById(p).classList.add('hidden-page'));
+    document.getElementById('page-' + pageId).classList.remove('hidden-page');
+    FS_UI.updateActiveNav(pageId);
+    if (window.innerWidth < 768) FS_UI.sidebar.close();
+  },
+
+  updateActiveNav(pageId) {
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      const btnPageId = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+      const isActive = btnPageId === pageId;
+      btn.classList.toggle('bg-indigo-800', isActive);
+      btn.classList.toggle('text-white', isActive);
+      btn.classList.toggle('shadow-inner', isActive);
+      const svg = btn.querySelector('svg');
+      if (svg) {
+        svg.classList.toggle('text-white', isActive);
+        svg.classList.toggle('text-indigo-400', !isActive);
+      }
+    });
+  },
+
+  sidebar: {
+    open: () => {
+      document.getElementById('sidebar').classList.remove('-translate-x-full');
+      document.getElementById('sidebar-overlay').classList.remove('hidden-page');
+    },
+    close: () => {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+      document.getElementById('sidebar-overlay').classList.add('hidden-page');
+    }
+  },
+
+  // --- Modal Utilities ---
+  modal: {
+    show(id) {
+      const el = document.getElementById(id);
+      const card = el.querySelector('div[id$="-card"]');
+      el.classList.remove('hidden-page');
+      setTimeout(() => {
+        el.classList.remove('opacity-0');
+        if (card) { card.classList.remove('scale-95'); card.classList.add('scale-100'); }
+      }, 10);
+    },
+    hide(id, callback) {
+      const el = document.getElementById(id);
+      const card = el.querySelector('div[id$="-card"]');
+      el.classList.add('opacity-0');
+      if (card) { card.classList.remove('scale-100'); card.classList.add('scale-95'); }
+      setTimeout(() => {
+        el.classList.add('hidden-page');
+        if(typeof callback === 'function') callback(); 
+      }, 300);
+    },
+    loading(title, subtitle) {
+      document.getElementById('modal-icon-success').classList.add('hidden');
+      document.getElementById('modal-icon-error').classList.add('hidden');
+      document.getElementById('modal-icon-loading').classList.remove('hidden');
+      document.getElementById('modal-loading-bar').classList.remove('hidden');
+      const titleEl = document.getElementById('loading-title');
+      titleEl.className = "text-slate-800 text-xl font-bold mb-1"; 
+      titleEl.innerText = title || 'กำลังดำเนินการ';
+      document.getElementById('loading-subtitle').innerText = subtitle || 'โปรดรอสักครู่...';
+      FS_UI.modal.show('loading-modal');
+    },
+    success(title, subtitle, callback) {
+      document.getElementById('modal-icon-loading').classList.add('hidden');
+      document.getElementById('modal-loading-bar').classList.add('hidden');
+      document.getElementById('modal-icon-success').classList.remove('hidden');
+      const titleEl = document.getElementById('loading-title');
+      titleEl.innerText = title || 'สำเร็จ!';
+      titleEl.className = "text-emerald-500 text-xl font-bold mb-1";
+      document.getElementById('loading-subtitle').innerText = subtitle || '';
+      setTimeout(() => FS_UI.modal.hide('loading-modal', callback), 1500);
+    },
+    error(title, subtitle, callback) {
+      document.getElementById('modal-icon-loading').classList.add('hidden');
+      document.getElementById('modal-loading-bar').classList.add('hidden');
+      document.getElementById('modal-icon-error').classList.remove('hidden');
+      const titleEl = document.getElementById('loading-title');
+      titleEl.innerText = title || 'เกิดข้อผิดพลาด';
+      titleEl.className = "text-rose-500 text-xl font-bold mb-1";
+      document.getElementById('loading-subtitle').innerText = subtitle || 'กรุณาลองใหม่อีกครั้ง';
+      setTimeout(() => FS_UI.modal.hide('loading-modal', callback), 2000);
+    },
+    confirm(title, message, onConfirm) {
+      document.getElementById('confirm-title').innerText = title;
+      document.getElementById('confirm-message').innerText = message;
+      FS_STATE.currentConfirmAction = onConfirm;
+      FS_UI.modal.show('confirm-modal');
+    }
+  },
+
+  // --- Rendering ---
+  render: {
+    dashboard() {
+      if (!FS_STATE.currentUser) return;
+      const filter = document.getElementById('time-filter')?.value || 'this_month';
+      FS_API.getDashboardData(FS_STATE.currentUser.username, FS_STATE.currentUser.role, filter)
+        .then(data => {
+          document.getElementById('display-balance').innerText = data.balance.toLocaleString(undefined, { minimumFractionDigits: 2 });
+          document.getElementById('display-income').innerText = data.income[0].toLocaleString(undefined, { minimumFractionDigits: 2 });
+          document.getElementById('display-expense').innerText = data.expense[0].toLocaleString(undefined, { minimumFractionDigits: 2 });
+          FS_UI.render.chart(data);
+          FS_UI.render.recentTable(data.recentItems);
+        });
+    },
+    recentTable(items) {
+      const tbody = document.getElementById('recent-table-body');
+      tbody.innerHTML = (items && items.length > 0) 
+        ? items.map(it => FS_UI.templates.transactionRow(it)).join('')
+        : FS_UI.templates.emptyRecentTable();
+    },
+    history() {
+      if (!FS_STATE.currentUser) return;
+      const query = document.getElementById('history-search').value;
+      const tbody = document.getElementById('history-table-body');
+      tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-400">กำลังโหลด...</td></tr>`;
+      FS_API.getHistory(FS_STATE.currentUser.username, FS_STATE.currentUser.role, query)
+        .then(data => {
+          tbody.innerHTML = data.length > 0 
+            ? data.map(it => FS_UI.templates.historyRow(it)).join('')
+            : `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-500">ไม่พบรายการ</td></tr>`;
+        });
+    },
+    users() {
+      FS_API.getUsers().then(users => {
+        const tbody = document.getElementById('users-table-body');
+        tbody.innerHTML = users.length > 0 
+          ? users.map(u => FS_UI.templates.userRow(u)).join('')
+          : `<tr><td colspan="4" class="px-6 py-12 text-center">ไม่มีข้อมูล</td></tr>`;
+      });
+    },
+    chart(data) {
+      const ctx = document.getElementById('financeChart')?.getContext('2d');
+      if (!ctx) return;
+      if(FS_STATE.chart) FS_STATE.chart.destroy();
+      FS_STATE.chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.labels,
+          datasets: [
+            { label: 'รายรับ', data: data.income, backgroundColor: '#10b981', borderRadius: 4 },
+            { label: 'รายจ่าย', data: data.expense, backgroundColor: '#f43f5e', borderRadius: 4 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+      });
+    }
+  },
+
+  // --- Templates ---
+  templates: {
+    transactionRow(item) {
+      const isIncome = item.type === 'income';
+      const role = FS_STATE.currentUser.role;
+      let actions = `<button onclick='FS_HANDLERS.showDetail(${JSON.stringify(item)})' class="text-indigo-600 font-bold text-xs p-2 hover:bg-indigo-50 rounded-lg">ดูข้อมูล</button>`;
+      if (['admin', 'manager'].includes(role)) {
+        actions += `<button onclick='FS_HANDLERS.openEditModal(${JSON.stringify(item)})' class="ml-2 text-amber-600 font-bold text-xs p-2 hover:bg-amber-50 rounded-lg">แก้ไข</button>`;
+        actions += `<button onclick='FS_HANDLERS.voidTransaction("${item.id}")' class="ml-2 text-rose-600 font-bold text-xs p-2 hover:bg-rose-50 rounded-lg">ยกเลิก</button>`;
+      }
+      return `
+        <tr class="hover:bg-slate-50/80 transition">
+          <td class="px-6 py-4 text-slate-500">${FS_UTILS.formatDate(item.date)}</td>
+          <td class="px-6 py-4 font-medium">${item.description}</td>
+          <td class="px-6 py-4"><span class="px-2.5 py-1 rounded-full text-xs font-bold ${isIncome ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}">${isIncome ? 'รายรับ' : 'รายจ่าย'}</span></td>
+          <td class="px-6 py-4 text-right font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">${isIncome ? '+' : '-'}${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+          <td class="px-6 py-4 text-center">${actions}</td>
+        </tr>`;
+    },
+    historyRow(item) {
+      const isIncome = item.type === 'income';
+      const role = FS_STATE.currentUser.role;
+      let actions = `<button onclick='FS_HANDLERS.showDetail(${JSON.stringify(item)})' class="text-indigo-600 font-bold text-xs p-2">ดูข้อมูล</button>`;
+      if (['admin', 'manager'].includes(role)) {
+        actions += `<button onclick='FS_HANDLERS.openEditModal(${JSON.stringify(item)})' class="ml-1 text-amber-600 font-bold text-xs p-2">แก้ไข</button>`;
+        actions += `<button onclick='FS_HANDLERS.voidTransaction("${item.id}")' class="ml-1 text-rose-600 font-bold text-xs p-2">ยกเลิก</button>`;
+      }
+      return `
+        <tr class="border-b border-slate-50">
+          <td class="px-6 py-4 text-slate-500">${FS_UTILS.formatDate(item.date)}</td>
+          <td class="px-6 py-4 font-mono text-xs text-slate-400">${item.id}</td>
+          <td class="px-6 py-4 font-medium">${item.description}</td>
+          <td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-[10px] font-bold ${isIncome ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}">${isIncome ? 'รายรับ' : 'รายจ่าย'}</span></td>
+          <td class="px-6 py-4 text-right font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+          <td class="px-6 py-4 text-center">${actions}</td>
+        </tr>`;
+    },
+    userRow(user) {
+      const badges = { admin: 'purple', manager: 'blue', user: 'slate' };
+      const color = badges[user.role] || 'slate';
+      return `
+        <tr>
+          <td class="px-6 py-4 font-medium">${user.name}</td>
+          <td class="px-6 py-4 text-slate-500">${user.username}</td>
+          <td class="px-6 py-4"><span class="px-2 py-1 bg-${color}-100 text-${color}-700 rounded text-xs font-bold uppercase">${user.role}</span></td>
+          <td class="px-6 py-4 text-right"><button onclick='FS_HANDLERS.openEditUserModal(${JSON.stringify(user)})' class="text-amber-600 font-bold text-xs p-2 hover:bg-amber-50 rounded-lg">แก้ไข</button></td>
+        </tr>`;
+    },
+    emptyRecentTable() {
+      return `<tr><td colspan="5" class="px-6 py-12 text-center"><h4 class="text-slate-800 font-bold">ยังไม่มีรายการบันทึก</h4><button onclick="FS_UI.navigate('transaction')" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold">เพิ่มรายการใหม่</button></td></tr>`;
+    }
+  }
+};
+</script>

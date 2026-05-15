@@ -1,0 +1,229 @@
+<script>
+/**
+ * 4. script_handlers.html
+ * ตัวรับ Event จากเบราว์เซอร์, ควบคุม Flow งาน และ Alias สำหรับเรียกจาก HTML
+ */
+const FS_HANDLERS = {
+  login() {
+    const user = document.getElementById('username').value;
+    const pass = document.getElementById('password').value;
+    if (!user || !pass) return FS_UI.modal.error('ข้อมูลไม่ครบถ้วน', 'กรุณากรอก Username และ Password');
+
+    FS_UI.modal.loading('กำลังเข้าสู่ระบบ', 'ตรวจสอบข้อมูลประจำตัว...');
+    FS_API.authenticate(user, pass).then(res => {
+      if (res.success) {
+        FS_UI.modal.success('เข้าสู่ระบบสำเร็จ', 'กำลังเตรียมแดชบอร์ด...', () => {
+          FS_STATE.currentUser = res.data;
+          document.getElementById('user-name').innerText = FS_STATE.currentUser.name;
+          document.getElementById('user-role').innerText = FS_STATE.currentUser.role;
+          document.getElementById('sidebar').classList.remove('hidden-page');
+          document.getElementById('mobile-header').classList.remove('hidden-page');
+          FS_UI.navigate( (res.data.role === 'admin' || res.data.role === 'manager') ? 'dashboard' : 'transaction' );
+          setTimeout(() => FS_HANDLERS.onboarding.check(), 1000);
+        });
+      } else {
+        FS_UI.modal.error('เข้าสู่ระบบล้มเหลว', res.message);
+      }
+    });
+  },
+
+  logout() {
+    FS_STATE.currentUser = null;
+    document.getElementById('sidebar').classList.add('hidden-page');
+    document.getElementById('mobile-header').classList.add('hidden-page');
+    FS_UI.sidebar.close();
+    FS_UI.navigate('login');
+  },
+
+  submitTransaction(e) {
+    e.preventDefault();
+    const data = {
+      type: document.querySelector('input[name="txType"]:checked').value,
+      date: document.getElementById('txDate').value,
+      description: document.getElementById('txDesc').value,
+      amount: document.getElementById('txAmount').value,
+      username: FS_STATE.currentUser.username
+    };
+    FS_UI.modal.loading('กำลังบันทึก...');
+    FS_API.saveTransaction(data).then(res => {
+      if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => document.getElementById('tx-form').reset());
+      else FS_UI.modal.error('ล้มเหลว', res.message);
+    });
+  },
+
+  submitReceipt(e) {
+    e.preventDefault();
+    const items = Array.from(document.querySelectorAll('.receipt-item')).map(row => ({
+      name: row.querySelector('.item-name').value,
+      price: row.querySelector('.item-price').value,
+      qty: row.querySelector('.item-qty').value
+    }));
+    const data = {
+      date: document.getElementById('rcDate').value,
+      shopName: document.getElementById('rcShop').value,
+      items: JSON.stringify(items),
+      username: FS_STATE.currentUser.username
+    };
+    FS_UI.modal.loading('กำลังบันทึกใบเสร็จ...');
+    FS_API.saveReceipt(data).then(res => {
+      if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => {
+        document.getElementById('receipt-form').reset();
+        document.getElementById('receipt-items-container').innerHTML = '';
+        FS_HANDLERS.receipt.addRow();
+      });
+      else FS_UI.modal.error('ล้มเหลว', res.message);
+    });
+  },
+
+  voidTransaction(txId) {
+    FS_UI.modal.confirm('ยืนยันยกเลิก', `ต้องการยกเลิกรายการ ${txId}?`, () => {
+      FS_UI.modal.loading('กำลังยกเลิก...');
+      FS_API.voidTransaction(txId).then(res => {
+        if (res.success) FS_UI.modal.success('สำเร็จ', res.message, () => FS_UI.render.dashboard());
+        else FS_UI.modal.error('ล้มเหลว', res.message);
+      });
+    });
+  },
+
+  submitEdit(e) {
+    e.preventDefault();
+    const data = {
+      id: document.getElementById('edit-id').value,
+      date: document.getElementById('edit-date').value,
+      description: document.getElementById('edit-desc').value,
+      amount: document.getElementById('edit-amount').value
+    };
+    FS_UI.modal.loading('กำลังแก้ไข...');
+    FS_API.updateTransaction(data).then(res => {
+      if (res.success) FS_UI.modal.success('สำเร็จ', res.message, () => { FS_UI.modal.hide('edit-modal'); FS_UI.render.dashboard(); });
+      else FS_UI.modal.error('ล้มเหลว', res.message);
+    });
+  },
+
+  receipt: {
+    addRow() {
+      const row = document.createElement('div');
+      row.className = 'flex flex-wrap md:flex-nowrap gap-2 items-center receipt-item bg-white p-3 rounded-xl border border-slate-100 shadow-sm animate-in zoom-in-95 duration-200';
+      row.innerHTML = `
+        <input type="text" class="item-name flex-1 min-w-[150px] px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" placeholder="รายการ" required>
+        <input type="number" class="item-price w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" placeholder="ราคา" required>
+        <input type="number" class="item-qty w-20 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" value="1" required>
+        <button type="button" onclick="this.parentElement.remove()" class="text-rose-400 p-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`;
+      document.getElementById('receipt-items-container').appendChild(row);
+    }
+  },
+
+  onboarding: {
+    check() { if (!localStorage.getItem('finsystem-onboarding-seen')) FS_UI.modal.show('onboarding-modal'); },
+    seen() { localStorage.setItem('finsystem-onboarding-seen', 'true'); FS_UI.modal.hide('onboarding-modal'); }
+  },
+
+  showDetail(item) {
+    const content = document.getElementById('detail-content');
+    const isIncome = item.type === 'income';
+    const isReceipt = !!item.itemsData;
+    let itemsHtml = '';
+    if (isReceipt) {
+      try {
+        const list = JSON.parse(item.itemsData);
+        const trs = list.map(it => `
+          <tr class="border-b border-slate-100 last:border-0">
+            <td class="py-3 text-sm">${it.name}</td>
+            <td class="py-3 text-center text-sm">x${it.qty}</td>
+            <td class="py-3 text-right font-bold text-sm">฿${(it.price * it.qty).toLocaleString()}</td>
+          </tr>`).join('');
+        itemsHtml = `<div class="pt-4 border-t"><p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">สินค้าในใบเสร็จ</p>
+          <table class="w-full"><tbody>${trs}</tbody></table></div>`;
+      } catch(e) {}
+    }
+    content.innerHTML = `
+      <div class="flex justify-between items-start mb-4">
+        <div><p class="text-[10px] font-black text-slate-400 uppercase">ประเภท</p><p class="font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">${isIncome ? 'รายรับ' : 'รายจ่าย'}</p></div>
+        <div class="text-right"><p class="text-[10px] font-black text-slate-400 uppercase">วันที่</p><p class="font-bold">${FS_UTILS.formatDate(item.date)}</p></div>
+      </div>
+      <p class="text-xl font-black text-slate-900">${item.description.replace(/^ใบเสร็จ:\s*/, '')}</p>
+      ${itemsHtml}
+      <div class="pt-6 mt-4 border-t-2 border-dashed flex justify-between items-end">
+        <div><p class="text-[10px] font-black text-slate-400 uppercase mb-1">ยอดเงินสุทธิ</p><p class="text-3xl font-black ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">฿${item.amount.toLocaleString()}</p></div>
+        <div class="text-right"><span class="text-[10px] text-slate-400 block mb-1">บันทึกโดย</span><p class="text-xs font-bold bg-slate-100 px-2 py-1 rounded-lg">${item.user}</p></div>
+      </div>`;
+    FS_UI.modal.show('detail-modal');
+  },
+
+  openEditModal(item) {
+    ['id', 'date', 'desc', 'amount'].forEach(k => {
+      const el = document.getElementById('edit-' + k);
+      if (el) el.value = item[k === 'desc' ? 'description' : k];
+    });
+    document.getElementById('edit-tx-id').innerText = item.id;
+    FS_UI.modal.show('edit-modal');
+  },
+
+  openEditUserModal(user) {
+    document.getElementById('edit-u-username').value = user.username;
+    document.getElementById('edit-u-name').value = user.name;
+    document.getElementById('edit-u-role').value = user.role;
+    document.getElementById('edit-u-password').value = '';
+    document.getElementById('edit-user-display').innerText = user.username;
+    FS_UI.modal.show('edit-user-modal');
+  },
+
+  submitNewUser(e) {
+    e.preventDefault();
+    const data = { name: 'new-name', role: 'new-role', username: 'new-username', password: 'new-password' };
+    const formData = {}; Object.keys(data).forEach(k => formData[k] = document.getElementById(data[k]).value);
+    FS_UI.modal.loading('กำลังเพิ่มผู้ใช้...');
+    FS_API.addUser(formData).then(res => {
+      if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => { document.getElementById('add-user-form').reset(); FS_UI.render.users(); });
+      else FS_UI.modal.error('ล้มเหลว', res.message);
+    });
+  },
+
+  submitEditUser(e) {
+    e.preventDefault();
+    const formData = {
+      username: document.getElementById('edit-u-username').value,
+      name: document.getElementById('edit-u-name').value,
+      role: document.getElementById('edit-u-role').value,
+      password: document.getElementById('edit-u-password').value
+    };
+    FS_UI.modal.loading('กำลังอัปเดต...');
+    FS_API.updateUser(formData).then(res => {
+      if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => { FS_UI.modal.hide('edit-user-modal'); FS_UI.render.users(); });
+      else FS_UI.modal.error('ล้มเหลว', res.message);
+    });
+  }
+};
+
+/**
+ * GLOBAL ALIASES
+ */
+const navigate = (id) => FS_UI.navigate(id);
+const openSidebar = () => FS_UI.sidebar.open();
+const closeSidebar = () => FS_UI.sidebar.close();
+const login = () => FS_HANDLERS.login();
+const logout = () => FS_HANDLERS.logout();
+const submitTransaction = (e) => FS_HANDLERS.submitTransaction(e);
+const submitReceipt = (e) => FS_HANDLERS.submitReceipt(e);
+const addReceiptItem = () => FS_HANDLERS.receipt.addRow();
+const showDetail = (item) => FS_HANDLERS.showDetail(item);
+const closeDetail = () => FS_UI.modal.hide('detail-modal');
+const loadDashboard = () => FS_UI.render.dashboard();
+const loadHistory = () => FS_UI.render.history();
+const voidTransaction = (id) => FS_HANDLERS.voidTransaction(id);
+const openEditModal = (item) => FS_HANDLERS.openEditModal(item);
+const closeEditModal = () => FS_UI.modal.hide('edit-modal');
+const submitEdit = (e) => FS_HANDLERS.submitEdit(e);
+const loadUsers = () => FS_UI.render.users();
+const submitNewUser = (e) => FS_HANDLERS.submitNewUser(e);
+const openEditUserModal = (user) => FS_HANDLERS.openEditUserModal(user);
+const closeEditUserModal = () => FS_UI.modal.hide('edit-user-modal');
+const submitEditUser = (e) => FS_HANDLERS.submitEditUser(e);
+const showConfirmModal = (t, m, c) => FS_UI.modal.confirm(t, m, c);
+const closeConfirmModal = () => FS_UI.modal.hide('confirm-modal');
+const showOnboarding = (f) => FS_UI.modal.show('onboarding-modal');
+const closeOnboarding = () => FS_HANDLERS.onboarding.seen();
+
+// Run init
+document.addEventListener('DOMContentLoaded', FS_UTILS.init);
+</script>
