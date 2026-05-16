@@ -111,8 +111,8 @@ const FS_UI = {
       FS_API.getDashboardData(FS_STATE.currentUser.username, FS_STATE.currentUser.role, filter)
         .then(data => {
           document.getElementById('display-balance').innerText = data.balance.toLocaleString(undefined, { minimumFractionDigits: 2 });
-          document.getElementById('display-income').innerText = data.income[0].toLocaleString(undefined, { minimumFractionDigits: 2 });
-          document.getElementById('display-expense').innerText = data.expense[0].toLocaleString(undefined, { minimumFractionDigits: 2 });
+          document.getElementById('display-income').innerText = data.totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 });
+          document.getElementById('display-expense').innerText = data.totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 });
           FS_UI.render.chart(data);
           FS_UI.render.recentTable(data.recentItems);
         });

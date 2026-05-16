@@ -363,7 +363,9 @@ function getDashboardData(username, role, filterType) {
       balance: 0,
       income: [0],
       expense: [0],
-      labels: ["รวม"],
+      totalIncome: 0,
+      totalExpense: 0,
+      labels: ["ไม่มีข้อมูล"],
       recentItems: [],
     };
   const data = txSheet.getDataRange().getValues();
@@ -372,6 +374,8 @@ function getDashboardData(username, role, filterType) {
     incomeSum = 0,
     expenseSum = 0,
     recentItems = [];
+
+  let grouped = {};
 
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -389,6 +393,7 @@ function getDashboardData(username, role, filterType) {
     }
 
     // 📅 ระบบกรองเวลา (Time Filter)
+    let passesFilter = true;
     if (row[1]) {
       const rowDate = new Date(row[1]);
 
@@ -397,7 +402,7 @@ function getDashboardData(username, role, filterType) {
           rowDate.getMonth() !== currentMonth ||
           rowDate.getFullYear() !== currentYear
         )
-          continue;
+          passesFilter = false;
       } else if (filterType === "last_month") {
         let targetMonth = currentMonth - 1;
         let targetYear = currentYear;
@@ -409,38 +414,65 @@ function getDashboardData(username, role, filterType) {
           rowDate.getMonth() !== targetMonth ||
           rowDate.getFullYear() !== targetYear
         )
-          continue;
+          passesFilter = false;
       } else if (filterType === "this_year") {
-        if (rowDate.getFullYear() !== currentYear) continue;
+        if (rowDate.getFullYear() !== currentYear) passesFilter = false;
+      }
+
+      if (passesFilter) {
+        // 📊 จัดกลุ่มข้อมูลสำหรับกราฟ
+        let groupKey = "";
+        if (filterType === "this_year") {
+          // ถ้าดูรายปี ให้กรองเป็นรายเดือน (ม.ค., ก.พ., ...)
+          groupKey = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "yyyy-MM");
+        } else {
+          // ถ้าดูรายเดือน หรืออื่นๆ ให้กรองเป็นรายวัน (01, 02, ...)
+          groupKey = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "MM-dd");
+        }
+
+        if (!grouped[groupKey]) {
+          grouped[groupKey] = { income: 0, expense: 0 };
+        }
+
+        if (type === "income") {
+          grouped[groupKey].income += amount;
+          incomeSum += amount;
+          balance += amount;
+        } else if (type === "expense") {
+          grouped[groupKey].expense += amount;
+          expenseSum += amount;
+          balance -= amount;
+        }
+
+        if (recentItems.length < 10) {
+          recentItems.push({
+            timestamp: row[0] ? row[0].toString() : "",
+            date: row[1] ? row[1].toString() : "",
+            type: type,
+            description: row[3] || "-",
+            amount: amount,
+            user: row[5] || "ระบบ",
+            itemsData: row[6] ? row[6].toString() : "",
+            id: row[7] ? row[7].toString() : "",
+          });
+        }
       }
     }
-
-    if (type === "income") {
-      incomeSum += amount;
-      balance += amount;
-    } else if (type === "expense") {
-      expenseSum += amount;
-      balance -= amount;
-    }
-
-    if (recentItems.length < 10) {
-      recentItems.push({
-        timestamp: row[0] ? row[0].toString() : "",
-        date: row[1] ? row[1].toString() : "",
-        type: type,
-        description: row[3] || "-",
-        amount: amount,
-        user: row[5] || "ระบบ",
-        itemsData: row[6] ? row[6].toString() : "",
-        id: row[7] ? row[7].toString() : "",
-      });
-    }
   }
+
+  // แปลงข้อมูลที่จัดกลุ่มแล้วเป็น Array สำหรับ Chart.js
+  const sortedKeys = Object.keys(grouped).sort();
+  const labels = sortedKeys.length > 0 ? sortedKeys : ["ไม่มีข้อมูล"];
+  const incomeArr = sortedKeys.length > 0 ? sortedKeys.map(k => grouped[k].income) : [0];
+  const expenseArr = sortedKeys.length > 0 ? sortedKeys.map(k => grouped[k].expense) : [0];
+
   return {
     balance: balance,
-    income: [incomeSum],
-    expense: [expenseSum],
-    labels: ["รวม"],
+    income: incomeArr,
+    expense: expenseArr,
+    totalIncome: incomeSum,
+    totalExpense: expenseSum,
+    labels: labels,
     recentItems: recentItems,
   };
 }
