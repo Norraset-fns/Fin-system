@@ -571,7 +571,7 @@ function updateTransactionInSheet(formObj) {
 }
 
 // 3. ดึงประวัติรายการทั้งหมด (พร้อมระบบ Filter และ Security)
-function getTransactionsHistory(username, role, searchQuery) {
+function getTransactionsHistory(username, role, searchQuery, startDate, endDate) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName("Transactions");
@@ -584,19 +584,35 @@ function getTransactionsHistory(username, role, searchQuery) {
     let results = [];
     const query = searchQuery ? searchQuery.toLowerCase() : "";
 
+    // เตรียมตัวแปรสำหรับเปรียบเทียบวันที่ (แบบไม่สนใจเวลา)
+    const filterStart = startDate ? new Date(startDate) : null;
+    if (filterStart) filterStart.setHours(0, 0, 0, 0);
+    
+    const filterEnd = endDate ? new Date(endDate) : null;
+    if (filterEnd) filterEnd.setHours(0, 0, 0, 0);
+
     // ⚡ เทคนิค Junior-to-Senior: วนลูปย้อนกลับ (i--) เพื่อเอาตัวล่าสุดขึ้นก่อน
     for (let i = data.length - 1; i >= 1; i--) {
       const row = data[i];
       const rowUsername = row[5];
       const rowDesc = row[3].toString().toLowerCase();
       const rowId = row[7].toString().toLowerCase();
-      const rowDate = row[1].toString();
+      
+      const cellDate = row[1];
+      let rowDateObj = (cellDate instanceof Date) ? new Date(cellDate) : new Date(cellDate);
+      rowDateObj.setHours(0, 0, 0, 0);
+      const rowTime = rowDateObj.getTime();
 
       // 1. เช็กสิทธิ์ (Row-level Security): ถ้าไม่ใช่ Admin/Manager ให้ดูได้แค่ของตัวเอง
       if (role === "user" && rowUsername !== username) continue;
 
-      // 2. เช็กคำค้นหา (ถ้ากรอกมา): ค้นหาใน รายการ, รหัส, หรือ วันที่
-      if (query && !rowDesc.includes(query) && !rowId.includes(query) && !rowDate.includes(query)) {
+      // 2. เช็กช่วงวันที่ (Date Range Filter)
+      if (filterStart && rowTime < filterStart.getTime()) continue;
+      if (filterEnd && rowTime > filterEnd.getTime()) continue;
+
+      // 3. เช็กคำค้นหา (ถ้ากรอกมา): ค้นหาใน รายการ, รหัส, หรือ วันที่
+      const rowDateText = row[1].toString().toLowerCase();
+      if (query && !rowDesc.includes(query) && !rowId.includes(query) && !rowDateText.includes(query)) {
         continue;
       }
 

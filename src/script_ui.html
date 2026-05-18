@@ -126,9 +126,13 @@ const FS_UI = {
     history() {
       if (!FS_STATE.currentUser) return;
       const query = document.getElementById('history-search').value;
+      const startDate = document.getElementById('history-start-date').value;
+      const endDate = document.getElementById('history-end-date').value;
       const tbody = document.getElementById('history-table-body');
+      
       tbody.innerHTML = `<tr><td colspan="6" class="px-6 py-12 text-center text-slate-400">กำลังโหลด...</td></tr>`;
-      FS_API.getHistory(FS_STATE.currentUser.username, FS_STATE.currentUser.role, query)
+      
+      FS_API.getHistory(FS_STATE.currentUser.username, FS_STATE.currentUser.role, query, startDate, endDate)
         .then(data => {
           tbody.innerHTML = data.length > 0 
             ? data.map(it => FS_UI.templates.historyRow(it)).join('')
