@@ -355,7 +355,7 @@ function saveReceipt(formObj) {
 }
 
 // 3. ดึงข้อมูล Dashboard (พร้อมระบบกรองข้อมูล)
-function getDashboardData(username, role, filterType) {
+function getDashboardData(username, role, filterType, customStart, customEnd) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const txSheet = ss.getSheetByName("Transactions");
   if (!txSheet)
@@ -381,52 +381,48 @@ function getDashboardData(username, role, filterType) {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
+  // กำหนดช่วงวันที่สำหรับ Filter
+  let filterStart = null;
+  let filterEnd = null;
+
+  if (filterType === "this_month") {
+    filterStart = new Date(currentYear, currentMonth, 1);
+    filterEnd = new Date(currentYear, currentMonth + 1, 0, 23, 59, 59);
+  } else if (filterType === "last_month") {
+    filterStart = new Date(currentYear, currentMonth - 1, 1);
+    filterEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+  } else if (filterType === "this_year") {
+    filterStart = new Date(currentYear, 0, 1);
+    filterEnd = new Date(currentYear, 11, 31, 23, 59, 59);
+  } else if (filterType === "custom" && customStart && customEnd) {
+    filterStart = new Date(customStart);
+    filterStart.setHours(0, 0, 0, 0);
+    filterEnd = new Date(customEnd);
+    filterEnd.setHours(23, 59, 59, 999);
+  }
+
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     let type = row[2];
     let amount = parseFloat(row[4]) || 0;
     const rowUsername = row[5];
-
-    // 🛡️ Row-Level Security
-    if (role === "user" && rowUsername !== username) {
-      continue;
-    }
+    const isCancelled = row[3] && row[3].toString().includes("[ยกเลิก]");
 
     // 📅 ระบบกรองเวลา (Time Filter)
     let passesFilter = true;
     if (row[1]) {
       const rowDate = new Date(row[1]);
 
-      if (filterType === "this_month") {
-        if (
-          rowDate.getMonth() !== currentMonth ||
-          rowDate.getFullYear() !== currentYear
-        )
-          passesFilter = false;
-      } else if (filterType === "last_month") {
-        let targetMonth = currentMonth - 1;
-        let targetYear = currentYear;
-        if (targetMonth < 0) {
-          targetMonth = 11;
-          targetYear--;
-        }
-        if (
-          rowDate.getMonth() !== targetMonth ||
-          rowDate.getFullYear() !== targetYear
-        )
-          passesFilter = false;
-      } else if (filterType === "this_year") {
-        if (rowDate.getFullYear() !== currentYear) passesFilter = false;
+      if (filterStart && filterEnd) {
+        if (rowDate < filterStart || rowDate > filterEnd) passesFilter = false;
       }
 
       if (passesFilter) {
-        // 📊 จัดกลุ่มข้อมูลสำหรับกราฟ
+        // 📊 จัดกลุ่มข้อมูลสำหรับกราฟ (ยอดรวมบริษัท)
         let groupKey = "";
         if (filterType === "this_year") {
-          // ถ้าดูรายปี ให้กรองเป็นรายเดือน (ม.ค., ก.พ., ...)
           groupKey = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "yyyy-MM");
         } else {
-          // ถ้าดูรายเดือน หรืออื่นๆ ให้กรองเป็นรายวัน (01, 02, ...)
           groupKey = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), "MM-dd");
         }
 
@@ -444,6 +440,7 @@ function getDashboardData(username, role, filterType) {
           balance -= amount;
         }
 
+        // รายการล่าสุด: แสดงรายการทั้งหมดเพื่อความโปร่งใส (เพราะหน้าบ้านบล็อกปุ่มแก้ไขตาม Role อยู่แล้ว)
         if (recentItems.length < 10) {
           recentItems.push({
             timestamp: row[0] ? row[0].toString() : "",

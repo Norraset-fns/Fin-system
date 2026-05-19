@@ -14,7 +14,7 @@ const FS_API = {
   },
 
   authenticate: (u, p) => FS_API._call('authenticate', u, p),
-  getDashboardData: (u, r, f) => FS_API._call('getDashboardData', u, r, f),
+  getDashboardData: (u, r, f, s, e) => FS_API._call('getDashboardData', u, r, f, s, e),
   getHistory: (u, r, q, s, e) => FS_API._call('getTransactionsHistory', u, r, q, s, e),
   getUsers: () => FS_API._call('getUsers'),
   saveTransaction: (d) => FS_API._call('saveTransaction', d),

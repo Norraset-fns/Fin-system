@@ -43,6 +43,13 @@ const FS_UI = {
     }
   },
 
+  toggleCustomRange() {
+    const filter = document.getElementById('time-filter').value;
+    const container = document.getElementById('custom-range-container');
+    if (filter === 'custom') container.classList.remove('hidden');
+    else container.classList.add('hidden');
+  },
+
   // --- Modal Utilities ---
   modal: {
     show(id) {
@@ -108,7 +115,10 @@ const FS_UI = {
     dashboard() {
       if (!FS_STATE.currentUser) return;
       const filter = document.getElementById('time-filter')?.value || 'this_month';
-      FS_API.getDashboardData(FS_STATE.currentUser.username, FS_STATE.currentUser.role, filter)
+      const startDate = document.getElementById('dash-start-date')?.value || '';
+      const endDate = document.getElementById('dash-end-date')?.value || '';
+      
+      FS_API.getDashboardData(FS_STATE.currentUser.username, FS_STATE.currentUser.role, filter, startDate, endDate)
         .then(data => {
           document.getElementById('display-balance').innerText = data.balance.toLocaleString(undefined, { minimumFractionDigits: 2 });
           document.getElementById('display-income').innerText = data.totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 });
@@ -151,16 +161,107 @@ const FS_UI = {
       const ctx = document.getElementById('financeChart')?.getContext('2d');
       if (!ctx) return;
       if(FS_STATE.chart) FS_STATE.chart.destroy();
+
+      // สร้าง Gradient สำหรับกราฟเส้น
+      const gradientIncome = ctx.createLinearGradient(0, 0, 0, 400);
+      gradientIncome.addColorStop(0, 'rgba(16, 185, 129, 0.2)');
+      gradientIncome.addColorStop(1, 'rgba(16, 185, 129, 0)');
+
+      const gradientExpense = ctx.createLinearGradient(0, 0, 0, 400);
+      gradientExpense.addColorStop(0, 'rgba(244, 63, 94, 0.2)');
+      gradientExpense.addColorStop(1, 'rgba(244, 63, 94, 0)');
+
       FS_STATE.chart = new Chart(ctx, {
-        type: 'bar',
+        type: 'line',
         data: {
           labels: data.labels,
           datasets: [
-            { label: 'รายรับ', data: data.income, backgroundColor: '#10b981', borderRadius: 4 },
-            { label: 'รายจ่าย', data: data.expense, backgroundColor: '#f43f5e', borderRadius: 4 }
+            { 
+              label: 'รายรับ', 
+              data: data.income, 
+              borderColor: '#10b981', 
+              backgroundColor: gradientIncome,
+              fill: true,
+              tension: 0.4,
+              borderWidth: 3,
+              pointRadius: 4,
+              pointBackgroundColor: '#10b981',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2
+            },
+            { 
+              label: 'รายจ่าย', 
+              data: data.expense, 
+              borderColor: '#f43f5e', 
+              backgroundColor: gradientExpense,
+              fill: true,
+              tension: 0.4,
+              borderWidth: 3,
+              pointRadius: 4,
+              pointBackgroundColor: '#f43f5e',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2
+            }
           ]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false, 
+          interaction: {
+            intersect: false,
+            mode: 'index',
+          },
+          scales: { 
+            y: { 
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+              },
+              ticks: {
+                callback: function(value) { return '฿' + value.toLocaleString(); },
+                font: { family: 'Prompt' }
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: { font: { family: 'Prompt' } }
+            }
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              align: 'end',
+              labels: {
+                boxWidth: 8,
+                usePointStyle: true,
+                pointStyle: 'circle',
+                font: { family: 'Prompt', size: 12, weight: '600' }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              titleColor: '#1e293b',
+              bodyColor: '#1e293b',
+              borderColor: '#e2e8f0',
+              borderWidth: 1,
+              titleFont: { family: 'Prompt', size: 14, weight: 'bold' },
+              bodyFont: { family: 'Prompt', size: 13 },
+              padding: 12,
+              displayColors: true,
+              callbacks: {
+                label: function(context) {
+                  let label = context.dataset.label || '';
+                  if (label) label += ': ';
+                  if (context.parsed.y !== null) label += '฿' + context.parsed.y.toLocaleString();
+                  return label;
+                }
+              }
+            }
+          }
+        }
       });
     }
   },
@@ -214,7 +315,7 @@ const FS_UI = {
         </tr>`;
     },
     emptyRecentTable() {
-      return `<tr><td colspan="5" class="px-6 py-12 text-center"><h4 class="text-slate-800 font-bold">ยังไม่มีรายการบันทึก</h4><button onclick="FS_UI.navigate('transaction')" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold">เพิ่มรายการใหม่</button></td></tr>`;
+      return `<tr><td colspan="5" class="px-6 py-12 text-center text-slate-400 font-medium italic">ยังไม่มีรายการบันทึก</td></tr>`;
     }
   }
 };

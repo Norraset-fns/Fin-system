@@ -172,20 +172,33 @@
 
       
       <div id="page-dashboard" class="hidden-page space-y-8 animate-in fade-in duration-500">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <h2 class="text-2xl font-bold text-slate-800">ภาพรวมการเงิน</h2>
           
-          <div class="flex items-center space-x-3">
-            <select id="time-filter" onchange="loadDashboard()" class="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-2 outline-none cursor-pointer shadow-sm font-medium transition">
+          <div class="flex flex-wrap items-center gap-3">
+            <div id="custom-range-container" class="hidden flex items-center gap-2 bg-white p-1.5 border border-slate-200 rounded-xl shadow-sm">
+              <div class="flex items-center gap-1.5 px-2">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">จาก</span>
+                <input type="date" id="dash-start-date" onchange="loadDashboard()" class="text-xs bg-transparent border-none focus:ring-0 p-0 w-28 outline-none font-bold">
+              </div>
+              <div class="w-px h-4 bg-slate-200"></div>
+              <div class="flex items-center gap-1.5 px-2">
+                <span class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">ถึง</span>
+                <input type="date" id="dash-end-date" onchange="loadDashboard()" class="text-xs bg-transparent border-none focus:ring-0 p-0 w-28 outline-none font-bold">
+              </div>
+            </div>
+
+            <select id="time-filter" onchange="FS_UI.toggleCustomRange(); loadDashboard();" class="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 outline-none cursor-pointer shadow-sm font-bold transition">
               <option value="this_month">เดือนนี้</option>
               <option value="last_month">เดือนที่แล้ว</option>
               <option value="this_year">ปีนี้</option>
+              <option value="custom">กำหนดเอง</option>
               <option value="all">ทั้งหมด</option>
             </select>
             
-            <button onclick="loadDashboard()" class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold flex items-center bg-indigo-50 px-3 py-2 rounded-xl transition">
-              <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-              อัปเดต
+            <button onclick="loadDashboard()" class="text-indigo-600 hover:text-indigo-800 text-sm font-bold flex items-center bg-indigo-50 px-4 py-2.5 rounded-xl transition">
+              <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              รีเฟรช
             </button>
           </div>
         </div>
