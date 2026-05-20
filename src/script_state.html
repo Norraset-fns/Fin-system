@@ -6,10 +6,16 @@
 const FS_STATE = {
   currentUser: null,
   chart: null,
-  currentConfirmAction: null
+  currentConfirmAction: null,
+  transactions: {}, // ⚡ เก็บข้อมูลธุรกรรมแยกตาม ID
+  users: {}         // ⚡ เก็บข้อมูลผู้ใช้แยกตาม Username
 };
 
 const FS_UTILS = {
+  init() {
+    FS_UTILS.lockDates();
+    FS_UTILS.setupHotkeys();
+  },
   formatDate(str) {
     if(!str) return '-';
     return new Date(str).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' });

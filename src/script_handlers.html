@@ -28,11 +28,21 @@ const FS_HANDLERS = {
   },
 
   logout() {
-    FS_STATE.currentUser = null;
-    document.getElementById('sidebar').classList.add('hidden-page');
-    document.getElementById('mobile-header').classList.add('hidden-page');
-    FS_UI.sidebar.close();
-    FS_UI.navigate('login');
+    FS_UI.modal.confirm('ยืนยันออกจากระบบ', 'คุณต้องการออกจากระบบใช่หรือไม่?', () => {
+      FS_STATE.currentUser = null;
+      document.getElementById('sidebar').classList.add('hidden-page');
+      document.getElementById('mobile-header').classList.add('hidden-page');
+      FS_UI.sidebar.close();
+      FS_UI.navigate('login');
+    }, 'ออกจากระบบ');
+  },
+
+  triggerConfirmAction() {
+    if (typeof FS_STATE.currentConfirmAction === 'function') {
+      FS_STATE.currentConfirmAction();
+    }
+    FS_UI.modal.hide('confirm-modal');
+    FS_STATE.currentConfirmAction = null;
   },
 
   submitTransaction(e) {
@@ -118,7 +128,9 @@ const FS_HANDLERS = {
     seen() { localStorage.setItem('finsystem-onboarding-seen', 'true'); FS_UI.modal.hide('onboarding-modal'); }
   },
 
-  showDetail(item) {
+  showDetail(id) {
+    const item = FS_STATE.transactions[id];
+    if (!item) return;
     const content = document.getElementById('detail-content');
     const isIncome = item.type === 'income';
     const isReceipt = !!item.itemsData;
@@ -150,7 +162,9 @@ const FS_HANDLERS = {
     FS_UI.modal.show('detail-modal');
   },
 
-  openEditModal(item) {
+  openEditModal(id) {
+    const item = FS_STATE.transactions[id];
+    if (!item) return;
     ['id', 'date', 'desc', 'amount'].forEach(k => {
       const el = document.getElementById('edit-' + k);
       if (el) el.value = item[k === 'desc' ? 'description' : k];
@@ -159,7 +173,9 @@ const FS_HANDLERS = {
     FS_UI.modal.show('edit-modal');
   },
 
-  openEditUserModal(user) {
+  openEditUserModal(username) {
+    const user = FS_STATE.users[username];
+    if (!user) return;
     document.getElementById('edit-u-username').value = user.username;
     document.getElementById('edit-u-name').value = user.name;
     document.getElementById('edit-u-role').value = user.role;
@@ -206,21 +222,22 @@ const logout = () => FS_HANDLERS.logout();
 const submitTransaction = (e) => FS_HANDLERS.submitTransaction(e);
 const submitReceipt = (e) => FS_HANDLERS.submitReceipt(e);
 const addReceiptItem = () => FS_HANDLERS.receipt.addRow();
-const showDetail = (item) => FS_HANDLERS.showDetail(item);
+const showDetail = (id) => FS_HANDLERS.showDetail(id);
 const closeDetail = () => FS_UI.modal.hide('detail-modal');
 const loadDashboard = () => FS_UI.render.dashboard();
 const loadHistory = () => FS_UI.render.history();
 const voidTransaction = (id) => FS_HANDLERS.voidTransaction(id);
-const openEditModal = (item) => FS_HANDLERS.openEditModal(item);
+const openEditModal = (id) => FS_HANDLERS.openEditModal(id);
 const closeEditModal = () => FS_UI.modal.hide('edit-modal');
 const submitEdit = (e) => FS_HANDLERS.submitEdit(e);
 const loadUsers = () => FS_UI.render.users();
 const submitNewUser = (e) => FS_HANDLERS.submitNewUser(e);
-const openEditUserModal = (user) => FS_HANDLERS.openEditUserModal(user);
+const openEditUserModal = (username) => FS_HANDLERS.openEditUserModal(username);
 const closeEditUserModal = () => FS_UI.modal.hide('edit-user-modal');
 const submitEditUser = (e) => FS_HANDLERS.submitEditUser(e);
 const showConfirmModal = (t, m, c) => FS_UI.modal.confirm(t, m, c);
 const closeConfirmModal = () => FS_UI.modal.hide('confirm-modal');
+const triggerConfirmAction = () => FS_HANDLERS.triggerConfirmAction();
 const showOnboarding = (f) => FS_UI.modal.show('onboarding-modal');
 const closeOnboarding = () => FS_HANDLERS.onboarding.seen();
 

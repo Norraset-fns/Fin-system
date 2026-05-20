@@ -484,7 +484,9 @@ function getNextId(sheetName, prefix) {
     return prefix + "-1000";
   }
 
-  const lastId = sheet.getRange(lastRow, 8).getValue().toString();
+  // ⚡ แก้ไขคอลัมน์รหัสไอดี: Transactions อยู่ที่คอลัมน์ 8 (H), Receipts อยู่ที่คอลัมน์ 7 (G)
+  const idCol = (sheetName === "Transactions") ? 8 : 7;
+  const lastId = sheet.getRange(lastRow, idCol).getValue().toString();
   const parts = lastId.split("-");
 
   if (parts.length === 2) {
