@@ -136,11 +136,42 @@ const FS_UI = {
       const startDate = document.getElementById('dash-start-date')?.value || '';
       const endDate = document.getElementById('dash-end-date')?.value || '';
       
+      // --- แสดง Skeleton Loading ---
+      const skeletonAmount = '<div class="inline-block h-8 w-28 bg-slate-200 rounded animate-pulse align-middle"></div>';
+      document.getElementById('display-balance').innerHTML = skeletonAmount;
+      document.getElementById('display-income').innerHTML = skeletonAmount;
+      document.getElementById('display-expense').innerHTML = skeletonAmount;
+      
+      const chartSkeleton = document.getElementById('chart-skeleton');
+      const chartCanvas = document.getElementById('financeChart');
+      if (chartSkeleton && chartCanvas) {
+        chartSkeleton.classList.remove('hidden-page');
+        chartCanvas.classList.add('hidden-page');
+      }
+
+      const recentTbody = document.getElementById('recent-table-body');
+      if (recentTbody) {
+        recentTbody.innerHTML = Array(3).fill(`
+          <tr>
+            <td class="px-6 py-5"><div class="h-4 w-20 bg-slate-200 rounded animate-pulse"></div></td>
+            <td class="px-6 py-5"><div class="h-4 w-48 bg-slate-200 rounded animate-pulse"></div></td>
+            <td class="px-6 py-5"><div class="h-6 w-16 bg-slate-200 rounded-full animate-pulse"></div></td>
+            <td class="px-6 py-5 text-right"><div class="h-4 w-24 bg-slate-200 rounded animate-pulse ml-auto"></div></td>
+            <td class="px-6 py-5 text-center"><div class="h-8 w-16 bg-slate-200 rounded-lg animate-pulse mx-auto"></div></td>
+          </tr>
+        `).join('');
+      }
+
       FS_API.getDashboardData(FS_STATE.currentUser.username, FS_STATE.currentUser.role, filter, startDate, endDate)
         .then(data => {
           document.getElementById('display-balance').innerText = data.balance.toLocaleString(undefined, { minimumFractionDigits: 2 });
           document.getElementById('display-income').innerText = data.totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 });
           document.getElementById('display-expense').innerText = data.totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 });
+          
+          if (chartSkeleton && chartCanvas) {
+            chartSkeleton.classList.add('hidden-page');
+            chartCanvas.classList.remove('hidden-page');
+          }
           FS_UI.render.chart(data);
           FS_UI.render.recentTable(data.recentItems);
         });
