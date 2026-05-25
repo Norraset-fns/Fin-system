@@ -4,6 +4,24 @@
  * ตัวรับ Event จากเบราว์เซอร์, ควบคุม Flow งาน และ Alias สำหรับเรียกจาก HTML
  */
 const FS_HANDLERS = {
+  formatCurrencyInput(input) {
+    let val = input.value.replace(/[^0-9.]/g, '');
+    const dotIndex = val.indexOf('.');
+    if (dotIndex !== -1) {
+      val = val.substring(0, dotIndex + 1) + val.substring(dotIndex + 1).replace(/\./g, '');
+    }
+    if (val === '') {
+      input.value = '';
+      return;
+    }
+    const parts = val.split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (parts.length > 1) {
+      parts[1] = parts[1].substring(0, 2);
+    }
+    input.value = parts.join('.');
+  },
+
   login() {
     const user = document.getElementById('username').value;
     const pass = document.getElementById('password').value;
@@ -51,7 +69,7 @@ const FS_HANDLERS = {
       type: document.querySelector('input[name="txType"]:checked').value,
       date: document.getElementById('txDate').value,
       description: document.getElementById('txDesc').value,
-      amount: document.getElementById('txAmount').value,
+      amount: document.getElementById('txAmount').value.replace(/,/g, ''),
       username: FS_STATE.currentUser.username
     };
     FS_UI.modal.loading('กำลังบันทึก...');
@@ -65,7 +83,7 @@ const FS_HANDLERS = {
     e.preventDefault();
     const items = Array.from(document.querySelectorAll('.receipt-item')).map(row => ({
       name: row.querySelector('.item-name').value,
-      price: row.querySelector('.item-price').value,
+      price: row.querySelector('.item-price').value.replace(/,/g, ''),
       qty: row.querySelector('.item-qty').value
     }));
     const data = {
@@ -101,7 +119,7 @@ const FS_HANDLERS = {
       id: document.getElementById('edit-id').value,
       date: document.getElementById('edit-date').value,
       description: document.getElementById('edit-desc').value,
-      amount: document.getElementById('edit-amount').value
+      amount: document.getElementById('edit-amount').value.replace(/,/g, '')
     };
     FS_UI.modal.loading('กำลังแก้ไข...');
     FS_API.updateTransaction(data).then(res => {
@@ -116,7 +134,7 @@ const FS_HANDLERS = {
       row.className = 'flex flex-wrap md:flex-nowrap gap-2 items-center receipt-item bg-white p-3 rounded-xl border border-slate-100 shadow-sm animate-in zoom-in-95 duration-200';
       row.innerHTML = `
         <input type="text" class="item-name flex-1 min-w-[150px] px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" placeholder="รายการ" required>
-        <input type="number" class="item-price w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" placeholder="ราคา" required>
+        <input type="text" inputmode="decimal" class="item-price w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" placeholder="ราคา" oninput="FS_HANDLERS.formatCurrencyInput(this)" required>
         <input type="number" class="item-qty w-20 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" value="1" required>
         <button type="button" onclick="this.parentElement.remove()" class="text-rose-400 p-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`;
       document.getElementById('receipt-items-container').appendChild(row);
@@ -189,7 +207,7 @@ const FS_HANDLERS = {
     const data = { name: 'new-name', role: 'new-role', username: 'new-username', password: 'new-password' };
     const formData = {}; Object.keys(data).forEach(k => formData[k] = document.getElementById(data[k]).value);
     FS_UI.modal.loading('กำลังเพิ่มผู้ใช้...');
-    FS_API.addUser(formData).then(res => {
+    FS_API.addUser(formData, FS_STATE.currentUser.role).then(res => {
       if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => { document.getElementById('add-user-form').reset(); FS_UI.render.users(); });
       else FS_UI.modal.error('ล้มเหลว', res.message);
     });
@@ -204,7 +222,7 @@ const FS_HANDLERS = {
       password: document.getElementById('edit-u-password').value
     };
     FS_UI.modal.loading('กำลังอัปเดต...');
-    FS_API.updateUser(formData).then(res => {
+    FS_API.updateUser(formData, FS_STATE.currentUser.role).then(res => {
       if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => { FS_UI.modal.hide('edit-user-modal'); FS_UI.render.users(); });
       else FS_UI.modal.error('ล้มเหลว', res.message);
     });

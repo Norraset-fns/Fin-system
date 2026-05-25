@@ -89,7 +89,7 @@ function authenticate(username, password) {
 // 1. ดึงรายชื่อผู้ใช้ (พร้อมเช็กสิทธิ์ Admin ที่ฝั่ง Server)
 function getUsers(currentUserRole) {
   // 🔐 ป้องกันคนแอบเรียกฟังก์ชันผ่านหน้าเว็บโดยไม่ได้รับอนุญาต
-  if (currentUserRole !== "admin") {
+  if (!["admin", "manager"].includes(currentUserRole)) {
     return { success: false, message: "สิทธิ์ของคุณไม่เพียงพอในการดูรายชื่อผู้ใช้" };
   }
 
@@ -116,7 +116,11 @@ function getUsers(currentUserRole) {
 }
 
 // 2. เพิ่มผู้ใช้ใหม่ (พร้อมระบบ Lock ป้องกันข้อมูลพัง)
-function addUser(formObj) {
+function addUser(formObj, currentUserRole) {
+  if (currentUserRole !== "admin") {
+    return { success: false, message: "สิทธิ์ของคุณไม่เพียงพอในการเพิ่มผู้ใช้" };
+  }
+
   const lock = LockService.getScriptLock(); // 🔐 สร้างกุญแจล็อค
   try {
     lock.waitLock(30000); // รอคิวว่าง 30 วินาที ป้องกันบันทึกชนกัน
@@ -157,7 +161,11 @@ function addUser(formObj) {
 }
 
 // 3. อัปเดตข้อมูลผู้ใช้ (พร้อมระบบ Lock)
-function updateUser(formObj) {
+function updateUser(formObj, currentUserRole) {
+  if (currentUserRole !== "admin") {
+    return { success: false, message: "สิทธิ์ของคุณไม่เพียงพอในการแก้ไขผู้ใช้" };
+  }
+
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);

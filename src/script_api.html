@@ -16,12 +16,12 @@ const FS_API = {
   authenticate: (u, p) => FS_API._call('authenticate', u, p),
   getDashboardData: (u, r, f, s, e) => FS_API._call('getDashboardData', u, r, f, s, e),
   getHistory: (u, r, q, s, e) => FS_API._call('getTransactionsHistory', u, r, q, s, e),
-  getUsers: () => FS_API._call('getUsers'),
+  getUsers: (role) => FS_API._call('getUsers', role),
   saveTransaction: (d) => FS_API._call('saveTransaction', d),
   saveReceipt: (d) => FS_API._call('saveReceipt', d),
   voidTransaction: (id) => FS_API._call('voidTransactionInSheet', id),
   updateTransaction: (d) => FS_API._call('updateTransactionInSheet', d),
-  addUser: (d) => FS_API._call('addUser', d),
-  updateUser: (d) => FS_API._call('updateUser', d)
+  addUser: (d, role) => FS_API._call('addUser', d, role),
+  updateUser: (d, role) => FS_API._call('updateUser', d, role)
 };
 </script>

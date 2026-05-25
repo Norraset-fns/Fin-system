@@ -106,7 +106,7 @@
         บันทึกใบเสร็จ
       </button>
       <!-- ปุ่มจัดการผู้ใช้ (เห็นเฉพาะ Admin) -->
-      <button onclick="navigate('users')" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium hover:bg-indigo-800 hover:text-white transition group" data-role="admin">
+      <button onclick="navigate('users')" class="nav-btn w-full flex items-center px-4 py-3 rounded-xl text-sm font-medium hover:bg-indigo-800 hover:text-white transition group" data-role="admin manager">
         <svg class="w-5 h-5 mr-3 text-indigo-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
         จัดการผู้ใช้งาน
       </button>
@@ -351,7 +351,7 @@
             </div>
             <div>
               <label class="block text-sm font-semibold text-slate-700">จำนวนเงิน (บาท)</label>
-              <input type="number" id="txAmount" min="0" step="0.01" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" required>
+              <input type="text" inputmode="decimal" id="txAmount" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="0.00" oninput="FS_HANDLERS.formatCurrencyInput(this)" required>
             </div>
           </div>
 
@@ -390,7 +390,7 @@
               <div
                 class="flex flex-wrap md:flex-nowrap gap-2 items-center receipt-item bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                 <input type="text" class="item-name flex-1 min-w-[150px] px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ชื่อสินค้า/บริการ" required>
-                <input type="number" class="item-price w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ราคา/หน่วย" required>
+                <input type="text" inputmode="decimal" class="item-price w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="ราคา/หน่วย" oninput="FS_HANDLERS.formatCurrencyInput(this)" required>
                 <input type="number" class="item-qty w-20 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value="1" required>
                 <button type="button" onclick="this.parentElement.remove()" class="text-rose-400 hover:text-rose-600 p-2 transition">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -406,7 +406,7 @@
       <!-- หน้าจัดการผู้ใช้ -->
       <div id="page-users" class="hidden-page max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
         
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
+        <div id="add-user-section" class="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
           <h2 class="text-2xl font-bold mb-6 text-slate-800 border-b pb-4">เพิ่มผู้ใช้งานใหม่</h2>
           <form id="add-user-form" class="grid grid-cols-1 md:grid-cols-2 gap-6" onsubmit="submitNewUser(event)">
             <div>
@@ -510,7 +510,7 @@
       
       <div>
         <label class="block text-sm font-semibold text-slate-700">จำนวนเงิน</label>
-        <input type="number" id="edit-amount" step="0.01" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" required>
+        <input type="text" inputmode="decimal" id="edit-amount" class="mt-1.5 block w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none" oninput="FS_HANDLERS.formatCurrencyInput(this)" required>
       </div>
 
       <div class="flex space-x-3 pt-4">

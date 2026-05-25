@@ -37,7 +37,7 @@ const FS_UTILS = {
           e.preventDefault();
           const role = FS_STATE.currentUser.role;
           if (target === 'dashboard' && !['admin', 'manager'].includes(role)) return;
-          if (target === 'users' && role !== 'admin') return;
+          if (target === 'users' && !['admin', 'manager'].includes(role)) return;
           FS_UI.navigate(target);
         }
       }
