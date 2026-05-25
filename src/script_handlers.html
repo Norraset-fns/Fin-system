@@ -27,7 +27,7 @@ const FS_HANDLERS = {
     const pass = document.getElementById('password').value;
     if (!user || !pass) return FS_UI.modal.error('ข้อมูลไม่ครบถ้วน', 'กรุณากรอก Username และ Password');
 
-    FS_UI.modal.loading('กำลังเข้าสู่ระบบ', 'ตรวจสอบข้อมูลประจำตัว...');
+    FS_UI.modal.loading('กำลังเข้าสู่ระบบ', 'ตรวจสอบข้อมูลประจำตัว...', 'login');
     FS_API.authenticate(user, pass).then(res => {
       if (res.success) {
         FS_UI.modal.success('เข้าสู่ระบบสำเร็จ', 'กำลังเตรียมแดชบอร์ด...', () => {
@@ -72,7 +72,7 @@ const FS_HANDLERS = {
       amount: document.getElementById('txAmount').value.replace(/,/g, ''),
       username: FS_STATE.currentUser.username
     };
-    FS_UI.modal.loading('กำลังบันทึก...');
+    FS_UI.modal.loading('กำลังบันทึก...', 'ระบบกำลังบันทึกข้อมูล', 'save');
     FS_API.saveTransaction(data).then(res => {
       if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => document.getElementById('tx-form').reset());
       else FS_UI.modal.error('ล้มเหลว', res.message);
@@ -92,7 +92,7 @@ const FS_HANDLERS = {
       items: JSON.stringify(items),
       username: FS_STATE.currentUser.username
     };
-    FS_UI.modal.loading('กำลังบันทึกใบเสร็จ...');
+    FS_UI.modal.loading('กำลังบันทึกใบเสร็จ...', 'ระบบกำลังประมวลผล', 'save');
     FS_API.saveReceipt(data).then(res => {
       if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => {
         document.getElementById('receipt-form').reset();
@@ -105,7 +105,7 @@ const FS_HANDLERS = {
 
   voidTransaction(txId) {
     FS_UI.modal.confirm('ยืนยันยกเลิก', `ต้องการยกเลิกรายการ ${txId}?`, () => {
-      FS_UI.modal.loading('กำลังยกเลิก...');
+      FS_UI.modal.loading('กำลังยกเลิก...', 'ระบบกำลังดำเนินการ', 'delete');
       FS_API.voidTransaction(txId).then(res => {
         if (res.success) FS_UI.modal.success('สำเร็จ', res.message, () => FS_UI.render.dashboard());
         else FS_UI.modal.error('ล้มเหลว', res.message);
@@ -121,7 +121,7 @@ const FS_HANDLERS = {
       description: document.getElementById('edit-desc').value,
       amount: document.getElementById('edit-amount').value.replace(/,/g, '')
     };
-    FS_UI.modal.loading('กำลังแก้ไข...');
+    FS_UI.modal.loading('กำลังแก้ไข...', 'ระบบกำลังบันทึกการเปลี่ยนแปลง', 'edit');
     FS_API.updateTransaction(data).then(res => {
       if (res.success) FS_UI.modal.success('สำเร็จ', res.message, () => { FS_UI.modal.hide('edit-modal'); FS_UI.render.dashboard(); });
       else FS_UI.modal.error('ล้มเหลว', res.message);
@@ -206,7 +206,7 @@ const FS_HANDLERS = {
     e.preventDefault();
     const data = { name: 'new-name', role: 'new-role', username: 'new-username', password: 'new-password' };
     const formData = {}; Object.keys(data).forEach(k => formData[k] = document.getElementById(data[k]).value);
-    FS_UI.modal.loading('กำลังเพิ่มผู้ใช้...');
+    FS_UI.modal.loading('กำลังเพิ่มผู้ใช้...', 'ระบบกำลังประมวลผล', 'user');
     FS_API.addUser(formData, FS_STATE.currentUser.role).then(res => {
       if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => { document.getElementById('add-user-form').reset(); FS_UI.render.users(); });
       else FS_UI.modal.error('ล้มเหลว', res.message);
@@ -221,7 +221,7 @@ const FS_HANDLERS = {
       role: document.getElementById('edit-u-role').value,
       password: document.getElementById('edit-u-password').value
     };
-    FS_UI.modal.loading('กำลังอัปเดต...');
+    FS_UI.modal.loading('กำลังอัปเดต...', 'ระบบกำลังบันทึกข้อมูล', 'edit');
     FS_API.updateUser(formData, FS_STATE.currentUser.role).then(res => {
       if(res.success) FS_UI.modal.success('สำเร็จ', res.message, () => { FS_UI.modal.hide('edit-user-modal'); FS_UI.render.users(); });
       else FS_UI.modal.error('ล้มเหลว', res.message);
